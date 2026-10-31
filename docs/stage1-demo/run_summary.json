@@ -5,12 +5,14 @@
     "float": "400.00",
     "receipts_total": "331.52",
     "eligible_total": "331.52",
-    "float_disbursements": "176.24",
-    "expected_return": "223.76",
-    "cash_returned": "221.76",
+    "float_disbursements": "331.52",
+    "expected_return": "68.48",
+    "cash_returned": "66.48",
     "over_short": "-2.00",
-    "personal_owed": "155.28",
+    "personal_owed": "0.00",
     "held_for_review": "0.00",
+    "personal_reimbursed_from_float": "155.28",
+    "template_balance": "68.48",
     "ineligible_company_card": "0.00",
     "ineligible_policy": "0.00",
     "reported_total": "331.52",
@@ -20,8 +22,8 @@
   },
   "receipts": [
     {
-      "number": "PC001-001",
-      "file": "PC001-001_2026-10-14_Hardware-Barn_81.30.pdf",
+      "number": "LK-0042-PC001-001",
+      "file": "LK-0042-PC001-001_2026-10-14_Hardware-Barn_81.30.pdf",
       "source": "01_hardware_barn_photo.jpg",
       "fields": {
         "vendor": {
@@ -119,8 +121,8 @@
       "verified_by": "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
     },
     {
-      "number": "PC001-002",
-      "file": "PC001-002_2026-10-15_Copper-Kettle-Cafe_94.94.pdf",
+      "number": "LK-0042-PC001-002",
+      "file": "LK-0042-PC001-002_2026-10-15_Copper-Kettle-Cafe_94.94.pdf",
       "source": "02_copper_kettle_scan.pdf",
       "fields": {
         "vendor": {
@@ -218,8 +220,8 @@
       "verified_by": "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
     },
     {
-      "number": "PC001-003",
-      "file": "PC001-003_2026-10-16_Prop-Depot-Supply-Co_100.29.pdf",
+      "number": "LK-0042-PC001-003",
+      "file": "LK-0042-PC001-003_2026-10-16_Prop-Depot-Supply-Co_100.29.pdf",
       "source": "03_prop_depot_invoice.pdf",
       "fields": {
         "vendor": {
@@ -317,8 +319,8 @@
       "verified_by": "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
     },
     {
-      "number": "PC001-004",
-      "file": "PC001-004_2026-10-17_Harbor-Light-Diner_54.99.pdf",
+      "number": "LK-0042-PC001-004",
+      "file": "LK-0042-PC001-004_2026-10-17_Harbor-Light-Diner_54.99.pdf",
       "source": "04_harbor_light_diner_photo.jpg",
       "fields": {
         "vendor": {
@@ -504,14 +506,13 @@
         "detail": "checked on 5 sheets"
       },
       {
-        "name": "Protected formulas intact (PC Formulas (1)!V2, PC Formulas (2)!S3, PC Formulas (3)!S3, PC Formulas (4)!S3)",
+        "name": "Protected formulas intact (PC Formulas (1)!S3, PC Formulas (1)!V2, PC Formulas (2)!S3, PC Formulas (3)!S3, PC Formulas (4)!S3, PC Formulas (1)!E44, PC Formulas (1)!E46, PC Formulas (1)!E49)",
         "passed": true,
         "detail": "unchanged"
       }
     ],
     "allowed_changes_seen": [
-      "workbook.xml: fullCalcOnLoad=\"1\" set (Excel recalculates on open)",
-      "PC Formulas (1)!S3: formula =CONCATENATE(\"1 of \",V2) replaced as approved in the profile (original formula confirmed before replacing)"
+      "workbook.xml: fullCalcOnLoad=\"1\" set (Excel recalculates on open)"
     ]
   }
 }

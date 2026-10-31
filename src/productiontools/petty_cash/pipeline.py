@@ -144,7 +144,7 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
     order = sorted(range(len(env.receipts)), key=lambda i: (env.receipts[i].date or date.max, i))
     env.receipts = [env.receipts[i] for i in order]
     for i, r in enumerate(env.receipts, start=1):
-        r.number, r.seq = f"{env.envelope_number}-{i:03d}", i
+        r.number, r.seq = f"{env.envelope_id}-{i:03d}", i
         r.label = receipt_label(r, profile)
         audit.record("receipt_numbered", file=r.source_name, number=r.number, label=r.label)
 
@@ -163,7 +163,7 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
         clean.append((label, c))
 
     # 6. top sheet: filled COPY of the template + automatic preservation check
-    xlsx = vdir / f"{env.envelope_number}_TopSheet.xlsx"
+    xlsx = vdir / f"{env.envelope_id}_TopSheet.xlsx"
     info = fill_topsheet(env, profile, xlsx)
     audit.record("topsheet_filled", file=xlsx.name, cells=len(info["cells_written"]),
                  preservation_passed=info["preservation"]["passed"])
@@ -173,12 +173,12 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
     source = topsheet_pdf_label if ts_pdf else "pending (manual Excel export needed)"
     if ts_pdf is None:
         ts_pdf = pdf_out.placeholder_topsheet_pdf(xlsx.name)
-    write_new_bytes(vdir / f"{env.envelope_number}_TopSheet.pdf", ts_pdf)
+    write_new_bytes(vdir / f"{env.envelope_id}_TopSheet.pdf", ts_pdf)
 
     # 7. combined PDFs (annotation toggle: both variants produced)
-    ts_label = f"{env.envelope_number} Top Sheet"
-    write_new_bytes(vdir / f"{env.envelope_number}_Combined_Annotated.pdf", pdf_out.combine(ts_pdf, ts_label, annotated))
-    write_new_bytes(vdir / f"{env.envelope_number}_Combined_Clean.pdf", pdf_out.combine(ts_pdf, ts_label, clean))
+    ts_label = f"{env.envelope_id} Top Sheet"
+    write_new_bytes(vdir / f"{env.envelope_id}_Combined_Annotated.pdf", pdf_out.combine(ts_pdf, ts_label, annotated))
+    write_new_bytes(vdir / f"{env.envelope_id}_Combined_Clean.pdf", pdf_out.combine(ts_pdf, ts_label, clean))
 
     # 8. reconciliation report
     flags = recon.reconcile(env, chart)
@@ -190,8 +190,8 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
                             f"Top sheet PDF source: {source}."]),
              ("Network", [f"App-level network lock installed: {netguard.is_installed()}; outbound attempts blocked during this run: "
                           f"{len(netguard.LOG.attempts)}. (Application-level safeguard only; not OS-enforced.)"])]
-    write_new_bytes(vdir / f"{env.envelope_number}_Reconciliation_Report.pdf", recon.report_pdf(env, flags, extra))
-    recon.report_xlsx(env, flags, vdir / f"{env.envelope_number}_Reconciliation_Report.xlsx")
+    write_new_bytes(vdir / f"{env.envelope_id}_Reconciliation_Report.pdf", recon.report_pdf(env, flags, extra))
+    recon.report_xlsx(env, flags, vdir / f"{env.envelope_id}_Reconciliation_Report.xlsx")
 
     summary = {"status": "READY FOR HUMAN REVIEW - NOT FINALIZED",
                "blocking_errors": sum(f.severity == "ERROR" for f in flags),

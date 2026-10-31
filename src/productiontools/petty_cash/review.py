@@ -93,7 +93,7 @@ def apply_review(receipts: list[Receipt], review: dict, audit: AuditLog) -> None
                 attr = "exclusion_acknowledged" if key == "acknowledge_exclusion" else key
                 setattr(r, attr, bool(d[key]))
                 audit.record(f"{key}_set", actor=reviewer, receipt=r.source_name, value=bool(d[key]))
-        for key in ("authorization", "tip_documentation"):
+        for key in ("authorization", "tip_documentation", "reimbursement_documentation"):
             if d.get(key):
                 setattr(r, key, str(d[key]))
                 audit.record(f"{key}_set", actor=reviewer, receipt=r.source_name, value=str(d[key]))

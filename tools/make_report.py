@@ -61,8 +61,8 @@ def main():
     v = res.version_dir
 
     # copy the deliverables
-    for name in ["PC001_TopSheet.xlsx", "PC001_TopSheet.pdf", "PC001_Combined_Annotated.pdf", "PC001_Combined_Clean.pdf",
-                 "PC001_Reconciliation_Report.pdf", "PC001_Reconciliation_Report.xlsx", "run_summary.json",
+    for name in ["LK-0042-PC001_TopSheet.xlsx", "LK-0042-PC001_TopSheet.pdf", "LK-0042-PC001_Combined_Annotated.pdf", "LK-0042-PC001_Combined_Clean.pdf",
+                 "LK-0042-PC001_Reconciliation_Report.pdf", "LK-0042-PC001_Reconciliation_Report.xlsx", "run_summary.json",
                  "extraction_before_review.json"]:
         shutil.copy(v / name, OUT / name)
     for sub in ("receipts_annotated", "receipts_clean", "review_previews"):
@@ -204,7 +204,7 @@ to write into a formula cell or into the hidden part of a merged cell. And a tem
 *without* the recalculate flag is tested too: the flag is added, and that is the only change
 to workbook.xml.
 
-## 4. Reconciliation results for envelope PC001
+## 4. Reconciliation results for submission LK-0042-PC001
 
 | Severity | Scope | Check | Finding |
 |---|---|---|---|
@@ -213,9 +213,10 @@ to workbook.xml.
 The problems were planted on purpose in the fictional data: the crew member returned $2.00
 too little, and the café receipt's printed total is $0.50 more than subtotal + tax. The
 job's rules allow approved personal-card expenses. The invoice and the diner bill were paid on
-the crew member's own cards and approved in the simulated review. They count as eligible and
-are owed to the crew member ($155.28). They do not reduce the cash expected back from the
-float (400.00 − 176.24 = 223.76). The diner receipt shows a handwritten $9.00 tip added to the card
+the crew member's own cards. In the simulated review they were approved, and the reimbursement
+was confirmed and documented: the crew member kept $155.28 from the float. So they are listed
+on the top sheet. Cash expected back is 400.00 − 331.52 = 68.48, which matches the template's
+own BALANCE DUE. The crew member returned 66.48, so the envelope is $2.00 short. The diner receipt shows a handwritten $9.00 tip added to the card
 charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction
@@ -238,7 +239,7 @@ otherwise. That simulated review:
 and the visual editor arrives in Stage 3.
 
 **Known limitations and things that did not work perfectly:**
-- **Top sheet PDF:** there is no Excel in the cloud, so `PC001_TopSheet.pdf` is a *cloud preview*
+- **Top sheet PDF:** there is no Excel in the cloud, so `LK-0042-PC001_TopSheet.pdf` is a *cloud preview*
   made with LibreOffice and is clearly watermarked. It is not part of the app. On your Mac,
   Excel produces this page (Stage 2). The manual-export fallback page is tested too.
 - **Receipt-number placement:** the number is small and goes automatically in the emptiest spot on or
@@ -249,8 +250,9 @@ and the visual editor arrives in Stage 3.
   You'll be able to remove a duplicate circle in the editor.
 - **Long descriptions** shrink to fit the template's narrow "For What" column (that's the template's own
   shrink-to-fit setting). Shorter descriptions print larger.
-- **Master template:** "Envelope No" (S3) is a formula, so the envelope ID is not written on the sheet
-  (it's used in file names). "Category" is mapped to the department. Both need your confirmation.
+- **Master template:** the "1 of N" page numbering and every formula are preserved. The submission ID
+  LK-0042-PC001 appears only in file names and reports. TOTAL DISBURSED is left blank until accounting
+  confirms its use.
 - **Heavy blur:** one of 12 stress photos failed (see 2b). It was flagged, not silently wrong.
 - **Overflow:** more than 35 receipts (the master template's first sheet) stops with a clear message.
   Continuation onto the template's sheets 2–4 comes in a later stage.
@@ -273,11 +275,11 @@ and the visual editor arrives in Stage 3.
 | `receipts_annotated/` | The four receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#4); nothing else added |
 | `receipts_clean/` | The same receipts with no marks |
 | `review_previews/` | The machine's own circles before review (dashed = not yet confirmed); a review aid, not a deliverable |
-| `PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |
-| `PC001_TopSheet.pdf` | Cloud preview of the top sheet (watermarked; Excel makes this on the Mac) |
-| `PC001_Combined_Annotated.pdf` | Top sheet + annotated receipts, with bookmarks |
-| `PC001_Combined_Clean.pdf` | Top sheet + clean receipts (the annotation toggle) |
-| `PC001_Reconciliation_Report.pdf` / `.xlsx` | Discrepancies and missing information |
+| `LK-0042-PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |
+| `LK-0042-PC001_TopSheet.pdf` | Cloud preview of the top sheet (watermarked; Excel makes this on the Mac) |
+| `LK-0042-PC001_Combined_Annotated.pdf` | Top sheet + annotated receipts, with bookmarks |
+| `LK-0042-PC001_Combined_Clean.pdf` | Top sheet + clean receipts (the annotation toggle) |
+| `LK-0042-PC001_Reconciliation_Report.pdf` / `.xlsx` | Discrepancies and missing information |
 | `extraction_before_review.json`, `run_summary.json`, `audit.log`, `ocr_accuracy.json` | Machine-readable records |
 """
     (OUT / "test-results.md").write_text(md)

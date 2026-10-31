@@ -106,7 +106,8 @@ class Receipt:
     authorization: str | None = None       # case-by-case authorization reference
     tip_eligible_confirmed: bool = False   # cash tip on a production-card bill confirmed eligible
     tip_documentation: str | None = None   # where that tip is independently documented
-    reimbursed_from_float: bool = False    # a personal expense explicitly reimbursed out of the float
+    reimbursed_from_float: bool = False    # reviewer confirms the crew member kept this amount from the float
+    reimbursement_documentation: str | None = None   # how/where that reimbursement is documented
     exclusion_acknowledged: bool = False   # reviewer acknowledged an ineligible (excluded) receipt
     status: str = ""                       # eligible / review_required / ineligible
     verified_by: str | None = None

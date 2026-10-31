@@ -16,7 +16,9 @@
 #   personal_card_approved    -> explicit approval of a personal card expense (if the job's rules allow them)
 #   authorization             -> authorization reference (required on case-by-case jobs)
 #   tip_eligible_confirmed + tip_documentation -> cash tip on a production-card bill
-#   reimbursed_from_float     -> a personal expense was actually paid back out of the float
+#   reimbursed_from_float + reimbursement_documentation
+#                             -> the crew member was reimbursed by keeping this amount from the float
+#                                (required before a personally paid expense can be listed on the top sheet)
 #   acknowledge_exclusion     -> reviewer acknowledges an ineligible receipt left out of the envelope
 reviewer: "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
 
@@ -40,6 +42,8 @@ receipts:
     description: "Brass ship lantern, rope coil (hero props)"
     paid_by: crew_personal        # crew member's own Visa
     personal_card_approved: true  # job allows approved personal-card expenses; approved on (simulated) review
+    reimbursed_from_float: true   # crew member kept $100.29 from the float as reimbursement
+    reimbursement_documentation: "Retained from float per crew note on envelope PC001 (fictional, simulated)"
 
   04_harbor_light_diner_photo.jpg:
     confirm: true
@@ -47,6 +51,8 @@ receipts:
     description: "Crew dinner, location scout"
     paid_by: crew_personal        # crew member's own Mastercard; tip was added to the card charge
     personal_card_approved: true
+    reimbursed_from_float: true
+    reimbursement_documentation: "Retained from float per crew note on envelope PC001 (fictional, simulated)"
     note: >-
       Handwritten tip $9.00 and final total $54.99 checked against the image
       (45.99 + 9.00 = 54.99).

@@ -8,9 +8,19 @@ Each job has a rules file, e.g.:
 The rules decide ELIGIBILITY. Who paid and how are recorded separately (payments.py).
 
 Outcomes for each payment component:
-  eligible         - may be counted in the envelope
+  eligible         - counted in the envelope
   review_required  - NOT counted; a person must resolve it before finalizing
+  separate         - eligible for reimbursement, but NOT through this envelope (the
+                     reimbursement from the float was not confirmed): handled separately
   ineligible       - never counted in this envelope (documented as excluded)
+
+Personally paid expenses and the top sheet (Option B, approved by the user):
+  The master top sheet nets every listed expense against the float. So a personally
+  paid expense may only be listed when the reviewer confirms the crew member was
+  reimbursed by retaining that amount from the float, and documents it. Then the
+  expected physical cash return equals the template's own balance. Without that
+  confirmation the expense stays out of the envelope and is flagged for separate
+  handling. It is never assumed to be reimbursed.
 
 Absolute rules (no job setting can change these):
   * Production company card purchases are never eligible.
@@ -32,7 +42,7 @@ POLICIES = {
     "case_by_case": "Non-cash transactions only with case-by-case authorization (approval + authorization reference)",
 }
 
-ELIGIBLE, REVIEW, INELIGIBLE = "eligible", "review_required", "ineligible"
+ELIGIBLE, REVIEW, INELIGIBLE, SEPARATE = "eligible", "review_required", "ineligible", "separate"
 
 
 @dataclass
@@ -72,6 +82,8 @@ def evaluate(component, receipt, rules: PettyCashRules) -> tuple[str, str]:
                                 "and independently documented under the job's policy")
         if paid_by is None:
             return REVIEW, "who paid the cash tip must be identified"
+        if paid_by == "crew_personal":
+            return _float_reimbursement(receipt, "cash tip paid personally")
         return ELIGIBLE, "cash tip" + (" (confirmed eligible and documented)" if receipt.tip_eligible_confirmed else "")
 
     if method is None:
@@ -80,7 +92,9 @@ def evaluate(component, receipt, rules: PettyCashRules) -> tuple[str, str]:
     if method == "Cash":
         if paid_by is None:
             return REVIEW, "who paid the cash must be identified"
-        return ELIGIBLE, "cash"
+        if paid_by == "crew_personal":
+            return _float_reimbursement(receipt, "paid with the crew member's own cash")
+        return ELIGIBLE, "cash from the float"
 
     # Non-cash (card) payment
     if paid_by is None:
@@ -91,7 +105,18 @@ def evaluate(component, receipt, rules: PettyCashRules) -> tuple[str, str]:
         return REVIEW, "personal card expense: requires explicit approval under the job's policy"
     if rules.payment_policy == "case_by_case" and not receipt.authorization:
         return REVIEW, "case-by-case job: approval recorded but no authorization reference"
-    return ELIGIBLE, "personal card expense approved" + (f" (authorization: {receipt.authorization})" if receipt.authorization else "")
+    approved = "personal card expense approved" + (f" (authorization: {receipt.authorization})" if receipt.authorization else "")
+    return _float_reimbursement(receipt, approved)
+
+
+def _float_reimbursement(receipt, what: str) -> tuple[str, str]:
+    """A personally paid expense enters the envelope only if reimbursement from the float is confirmed AND documented."""
+    if receipt.reimbursed_from_float and receipt.reimbursement_documentation:
+        return ELIGIBLE, f"{what}; crew member reimbursed by retaining it from the float ({receipt.reimbursement_documentation})"
+    if receipt.reimbursed_from_float:
+        return SEPARATE, f"{what}; reimbursement from the float is confirmed but not documented - kept out of the envelope"
+    return SEPARATE, (f"{what}; reimbursement from the float has not been confirmed - kept out of the envelope "
+                      "and flagged for separate reimbursement")
 
 
 def apply(receipt, rules: PettyCashRules) -> None:
@@ -106,6 +131,8 @@ def receipt_status(receipt) -> str:
         return ELIGIBLE
     if REVIEW in states or not receipt.payments:
         return REVIEW
+    if SEPARATE in states:
+        return SEPARATE
     return INELIGIBLE
 
 
@@ -122,6 +149,9 @@ def check_completed_envelope(receipts, rules: PettyCashRules) -> list[dict]:
             status, reason = evaluate(c, work, rules)
             if status == INELIGIBLE:
                 findings.append({"severity": "ERROR", "receipt": r.number or r.source_name, "check": "Policy violation",
+                                 "message": f"{c.label} ${c.amount} ({c.method}): {reason}."})
+            elif status == SEPARATE:
+                findings.append({"severity": "WARNING", "receipt": r.number or r.source_name, "check": "Reimbursement not confirmed",
                                  "message": f"{c.label} ${c.amount} ({c.method}): {reason}."})
             elif status == REVIEW:
                 findings.append({"severity": "WARNING", "receipt": r.number or r.source_name, "check": "Needs review",

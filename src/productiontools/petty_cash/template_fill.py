@@ -76,6 +76,9 @@ def topsheet_values(env: Envelope, profile: TemplateProfile) -> dict[str, object
 def fill_topsheet(env: Envelope, profile: TemplateProfile, dest: Path) -> dict:
     """Write the filled copy, then verify preservation. Raises if verification fails."""
     values = topsheet_values(env, profile)
+    blocked = set(values) & set(profile.never_write)
+    if blocked:
+        raise TemplateMappingError(f"Refusing to write never-write cells: {sorted(blocked)}")
     info = fill_template_copy(profile.template_file, dest, profile.sheet, values, profile.replace_formulas)
     report = xlsx_integrity.compare(profile.template_file, dest, profile.sheet, info["sheet_part"], values.keys())
     for cell in info["formulas_replaced"]:

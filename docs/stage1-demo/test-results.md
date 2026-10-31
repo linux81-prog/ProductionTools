@@ -1,10 +1,10 @@
 # Stage 1 — Test Results and Demo Report
 
-Generated 2026-10-31 21:29 in the cloud development environment. **All data is fictional.**
+Generated 2026-10-31 21:51 in the cloud development environment. **All data is fictional.**
 
 ## 1. Automated tests
 
-**Result: 83 passed, 1 warning in 80.52s (0:01:20)**
+**Result: 86 passed, 1 warning in 81.63s (0:01:21)**
 
 Every test runs with the app-level network lock installed, so any accidental outbound
 connection would make the suite fail.
@@ -54,8 +54,10 @@ tests/test_parse_and_recon.py::test_flags_duplicates_dates_limits_codes_and_unve
 tests/test_parse_and_recon.py::test_reported_total_mismatch PASSED
 tests/test_payments.py::test_card_tip_is_inside_the_card_charge PASSED
 tests/test_payments.py::test_cash_tip_on_personal_card_bill_is_its_own_component PASSED
-tests/test_payments.py::test_personal_card_never_reduces_cash_expected_back_unless_recorded PASSED
-tests/test_payments.py::test_cash_reconciliation_uses_float_disbursements_only PASSED
+tests/test_payments.py::test_personal_card_only_enters_envelope_with_documented_float_reimbursement PASSED
+tests/test_payments.py::test_personal_cash_also_needs_documented_float_reimbursement PASSED
+tests/test_payments.py::test_cash_return_reconciles_with_template_balance PASSED
+tests/test_payments.py::test_unconfirmed_personal_card_stays_out_and_cash_still_reconciles PASSED
 tests/test_payments.py::test_cash_only_job_cash_reconciliation PASSED
 tests/test_policy.py::test_production_card_always_ineligible[cash_only] PASSED
 tests/test_policy.py::test_production_card_always_ineligible[cash_and_approved_personal_cards] PASSED
@@ -86,7 +88,8 @@ tests/test_template_preservation.py::test_checker_catches_an_unmapped_change PAS
 tests/test_template_preservation.py::test_checker_catches_a_dropped_image PASSED
 tests/test_template_preservation.py::test_profile_loads_and_matches_template PASSED
 tests/test_template_preservation.py::test_master_template_preserved PASSED
-tests/test_template_preservation.py::test_envelope_no_replacement_guarded_and_page_numbering_intact PASSED
+tests/test_template_preservation.py::test_master_profile_preserves_page_numbering_and_total_disbursed PASSED
+tests/test_template_preservation.py::test_never_write_cells_are_refused PASSED
 tests/test_template_preservation.py::test_replace_formula_requires_expected_formula PASSED
 tests/test_tips.py::test_tip_and_final_written_and_consistent PASSED
 tests/test_tips.py::test_tip_without_final_proposes_amount_needing_confirmation PASSED
@@ -214,7 +217,7 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 | PASS | All cell values and formulas unchanged outside mapped cells (all sheets) | 150000 cells compared, 2699 formulas |
 | PASS | All cell formatting unchanged, including mapped cells (fonts, fills, borders, alignment, number formats, protection) | 150000 cells compared |
 | PASS | Merged cells, conditional formatting, data validation, print area/titles, page setup, margins, header/footer, print options, images, column widths, row heights, frozen panes unchanged | checked on 5 sheets |
-| PASS | Protected formulas intact (PC Formulas (1)!V2, PC Formulas (2)!S3, PC Formulas (3)!S3, PC Formulas (4)!S3) | unchanged |
+| PASS | Protected formulas intact (PC Formulas (1)!S3, PC Formulas (1)!V2, PC Formulas (2)!S3, PC Formulas (3)!S3, PC Formulas (4)!S3, PC Formulas (1)!E44, PC Formulas (1)!E46, PC Formulas (1)!E49) | unchanged |
 
 **Documented intentional changes (the only differences allowed):**
 - **Mapped cell values**: Only the cells listed in the template profile receive new values; each keeps its original formatting style.
@@ -224,7 +227,6 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 
 **Allowed changes actually seen in this run:**
 - workbook.xml: fullCalcOnLoad="1" set (Excel recalculates on open)
-- PC Formulas (1)!S3: formula =CONCATENATE("1 of ",V2) replaced as approved in the profile (original formula confirmed before replacing)
 
 The tests also confirm that the checker **catches** problems. It fails on a changed formula
 in an unmapped cell, and on a damaged logo image. They also confirm that filling **refuses**
@@ -232,24 +234,24 @@ to write into a formula cell or into the hidden part of a merged cell. And a tem
 *without* the recalculate flag is tested too: the flag is added, and that is the only change
 to workbook.xml.
 
-## 4. Reconciliation results for envelope PC001
+## 4. Reconciliation results for submission LK-0042-PC001
 
 | Severity | Scope | Check | Finding |
 |---|---|---|---|
-| ERROR | Envelope | Cash reconciliation | Float $400.00 − float disbursements $176.24 = $223.76 cash expected back; $221.76 returned. SHORT by $2.00. |
-| WARNING | PC001-002 | Receipt arithmetic | Subtotal $86.25 + tax $8.19 = $94.44, but the receipt's printed total is $94.94 (difference $0.50). |
-| WARNING | PC001-003 | Personal card | The bill $100.29 by Visa, paid by crew member personally (reviewer): personal card expense approved. Counted as eligible; reimbursement is still owed (not paid from the float). |
-| WARNING | PC001-004 | Personal card | The bill $54.99 by Mastercard, paid by crew member personally (reviewer): personal card expense approved. Counted as eligible; reimbursement is still owed (not paid from the float). |
-| INFO | Envelope | Reimbursement owed | $155.28 of approved personally paid expenses has not been reimbursed from the float, so it does not reduce the cash expected back. |
-| INFO | PC001-004 | Tip paid by card | Tip $9.00 is included in the card charge of $54.99. |
-| INFO | PC001-004 | Suggested gratuity | Receipt shows suggested tip amounts; these were NOT counted. |
+| ERROR | Envelope | Cash reconciliation | Float $400.00 − float disbursements $331.52 = $68.48 cash expected back; $66.48 returned. SHORT by $2.00. |
+| WARNING | LK-0042-PC001-002 | Receipt arithmetic | Subtotal $86.25 + tax $8.19 = $94.44, but the receipt's printed total is $94.94 (difference $0.50). |
+| WARNING | LK-0042-PC001-003 | Personal card | The bill $100.29 by Visa, paid by crew member personally (reviewer): personal card expense approved; crew member reimbursed by retaining it from the float (Retained from float per crew note on envelope PC001 (fictional, simulated)). Listed on the top sheet. |
+| WARNING | LK-0042-PC001-004 | Personal card | The bill $54.99 by Mastercard, paid by crew member personally (reviewer): personal card expense approved; crew member reimbursed by retaining it from the float (Retained from float per crew note on envelope PC001 (fictional, simulated)). Listed on the top sheet. |
+| INFO | LK-0042-PC001-004 | Tip paid by card | Tip $9.00 is included in the card charge of $54.99. |
+| INFO | LK-0042-PC001-004 | Suggested gratuity | Receipt shows suggested tip amounts; these were NOT counted. |
 
 The problems were planted on purpose in the fictional data: the crew member returned $2.00
 too little, and the café receipt's printed total is $0.50 more than subtotal + tax. The
 job's rules allow approved personal-card expenses. The invoice and the diner bill were paid on
-the crew member's own cards and approved in the simulated review. They count as eligible and
-are owed to the crew member ($155.28). They do not reduce the cash expected back from the
-float (400.00 − 176.24 = 223.76). The diner receipt shows a handwritten $9.00 tip added to the card
+the crew member's own cards. In the simulated review they were approved, and the reimbursement
+was confirmed and documented: the crew member kept $155.28 from the float. So they are listed
+on the top sheet. Cash expected back is 400.00 − 331.52 = 68.48, which matches the template's
+own BALANCE DUE. The crew member returned 66.48, so the envelope is $2.00 short. The diner receipt shows a handwritten $9.00 tip added to the card
 charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction
@@ -273,7 +275,7 @@ otherwise. That simulated review:
 and the visual editor arrives in Stage 3.
 
 **Known limitations and things that did not work perfectly:**
-- **Top sheet PDF:** there is no Excel in the cloud, so `PC001_TopSheet.pdf` is a *cloud preview*
+- **Top sheet PDF:** there is no Excel in the cloud, so `LK-0042-PC001_TopSheet.pdf` is a *cloud preview*
   made with LibreOffice and is clearly watermarked. It is not part of the app. On your Mac,
   Excel produces this page (Stage 2). The manual-export fallback page is tested too.
 - **Receipt-number placement:** the number is small and goes automatically in the emptiest spot on or
@@ -284,8 +286,9 @@ and the visual editor arrives in Stage 3.
   You'll be able to remove a duplicate circle in the editor.
 - **Long descriptions** shrink to fit the template's narrow "For What" column (that's the template's own
   shrink-to-fit setting). Shorter descriptions print larger.
-- **Master template:** "Envelope No" (S3) is a formula, so the envelope ID is not written on the sheet
-  (it's used in file names). "Category" is mapped to the department. Both need your confirmation.
+- **Master template:** the "1 of N" page numbering and every formula are preserved. The submission ID
+  LK-0042-PC001 appears only in file names and reports. TOTAL DISBURSED is left blank until accounting
+  confirms its use.
 - **Heavy blur:** one of 12 stress photos failed (see 2b). It was flagged, not silently wrong.
 - **Overflow:** more than 35 receipts (the master template's first sheet) stops with a clear message.
   Continuation onto the template's sheets 2–4 comes in a later stage.
@@ -308,9 +311,9 @@ and the visual editor arrives in Stage 3.
 | `receipts_annotated/` | The four receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#4); nothing else added |
 | `receipts_clean/` | The same receipts with no marks |
 | `review_previews/` | The machine's own circles before review (dashed = not yet confirmed); a review aid, not a deliverable |
-| `PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |
-| `PC001_TopSheet.pdf` | Cloud preview of the top sheet (watermarked; Excel makes this on the Mac) |
-| `PC001_Combined_Annotated.pdf` | Top sheet + annotated receipts, with bookmarks |
-| `PC001_Combined_Clean.pdf` | Top sheet + clean receipts (the annotation toggle) |
-| `PC001_Reconciliation_Report.pdf` / `.xlsx` | Discrepancies and missing information |
+| `LK-0042-PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |
+| `LK-0042-PC001_TopSheet.pdf` | Cloud preview of the top sheet (watermarked; Excel makes this on the Mac) |
+| `LK-0042-PC001_Combined_Annotated.pdf` | Top sheet + annotated receipts, with bookmarks |
+| `LK-0042-PC001_Combined_Clean.pdf` | Top sheet + clean receipts (the annotation toggle) |
+| `LK-0042-PC001_Reconciliation_Report.pdf` / `.xlsx` | Discrepancies and missing information |
 | `extraction_before_review.json`, `run_summary.json`, `audit.log`, `ocr_accuracy.json` | Machine-readable records |

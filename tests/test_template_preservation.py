@@ -143,29 +143,27 @@ def test_master_template_preserved(tmp_path):
     assert xlsx_integrity.compare(master, approved, "PC Formulas (1)", info2["sheet_part"], {**values, "S3": 1}).passed
 
 
-def test_envelope_no_replacement_guarded_and_page_numbering_intact(tmp_path):
+def test_master_profile_preserves_page_numbering_and_total_disbursed(tmp_path):
     from conftest import FIX
     from productiontools.petty_cash.mapping import load_profile
     master = FIX / "templates" / "master_pc" / "PC_Sheet_Template.xlsx"
     profile = load_profile(FIX / "templates" / "master_pc" / "PC_Sheet_Template.profile.yaml")
-    assert profile.header["envelope_id"] == "S3"
-    assert profile.replace_formulas == {"S3": 'CONCATENATE("1 of ",V2)'}
-    # Wrong expectation (e.g. a different template or wrong cell) -> refused, nothing written
+    assert "envelope_id" not in profile.header and not profile.replace_formulas     # ID only in file names / reports
+    assert "PC Formulas (1)!S3" in profile.protected_formulas and "E47" in profile.never_write
+    # The generic guard still exists for other templates: a wrong expected formula is refused before writing.
     with pytest.raises(TemplateMappingError, match="approved for replacement only if"):
         fill_template_copy(master, tmp_path / "bad.xlsx", "PC Formulas (1)", {"S3": "X"},
                            replace_formulas={"S3": 'CONCATENATE("2 of ",V2)'})
-    assert not (tmp_path / "bad.xlsx").exists()   # refused before anything was written
-    out = tmp_path / "ok.xlsx"
-    fill_template_copy(master, out, "PC Formulas (1)", {"S3": "LK-0042-PC001"}, replace_formulas=profile.replace_formulas)
-    import zipfile
+    assert not (tmp_path / "bad.xlsx").exists()
 
-    from productiontools.core.xlsx_fill import cell_xml
-    with zipfile.ZipFile(master) as zt, zipfile.ZipFile(out) as zo:
-        for item in profile.protected_formulas:
-            sheet, ref = item.rsplit("!", 1)
-            assert cell_xml(zt, sheet, ref) == cell_xml(zo, sheet, ref) and "<f" in cell_xml(zo, sheet, ref)
-        assert "LK-0042-PC001" in cell_xml(zo, "PC Formulas (1)", "S3")
-        assert "<f" not in cell_xml(zo, "PC Formulas (1)", "S3")
+
+def test_never_write_cells_are_refused(tmp_path):
+    from productiontools.petty_cash.mapping import load_profile
+    p = tmp_path / "p.yaml"
+    p.write_text("name: x\ntemplate_file: t.xlsx\nsheet: S\nheader:\n  float_amount: E47\n"
+                 "line_items: {first_row: 8, max_rows: 2, columns: {amount: E}}\nnever_write: [E47]\n")
+    with pytest.raises(TemplateMappingError, match="never write"):
+        load_profile(p)
 
 
 def test_replace_formula_requires_expected_formula(tmp_path):

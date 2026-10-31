@@ -7,12 +7,13 @@ import pytest
 
 from conftest import FIX
 from productiontools.petty_cash.payments import envelope_amount
-from productiontools.petty_cash.policy import (ELIGIBLE, INELIGIBLE, REVIEW, PettyCashRules, check_completed_envelope,
-                                               load_rules, receipt_status)
+from productiontools.petty_cash.policy import (ELIGIBLE, INELIGIBLE, REVIEW, SEPARATE, PettyCashRules,
+                                               check_completed_envelope, load_rules, receipt_status)
 from productiontools.petty_cash.recon import reconcile, summary_numbers
 from test_payments import _env, make
 
 D = Decimal
+DOC = dict(reimbursed_from_float=True, reimbursement_documentation="Kept from float, noted on envelope (fictional)")
 POLICIES = ["cash_only", "cash_and_approved_personal_cards", "case_by_case"]
 
 
@@ -31,7 +32,8 @@ def test_production_card_always_ineligible(policy):
 
 
 def test_personal_card_on_cash_only_job_ineligible():
-    r = make("P", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True, rules=rules("cash_only"))
+    r = make("P", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True, rules=rules("cash_only"),
+             **DOC)                                                  # even "reimbursed from the float" cannot override
     assert r.payments[0].eligibility == INELIGIBLE and "cash only" in r.payments[0].reason
     assert envelope_amount(r) == D("0")
 
@@ -41,16 +43,20 @@ def test_personal_card_on_permitting_job_requires_review_then_approval():
     assert pending.payments[0].eligibility == REVIEW and envelope_amount(pending) == D("0")     # never automatic
     approved = make("P", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True,
                     rules=rules("cash_and_approved_personal_cards"))
-    assert approved.payments[0].eligibility == ELIGIBLE and envelope_amount(approved) == D("30.00")
-    flags = {(f.severity, f.check) for f in reconcile(_env([approved], reported="30.00", returned="100.00"), {"2410": "A"})}
+    assert approved.payments[0].eligibility == SEPARATE and envelope_amount(approved) == D("0")  # reimbursement not confirmed
+    listed = make("P", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True,
+                  rules=rules("cash_and_approved_personal_cards"), **DOC)
+    assert listed.payments[0].eligibility == ELIGIBLE and envelope_amount(listed) == D("30.00")
+    flags = {(f.severity, f.check) for f in reconcile(_env([listed], reported="30.00", returned="70.00"), {"2410": "A"})}
     assert ("WARNING", "Personal card") in flags          # still flagged for sign-off even when allowed
+    assert ("ERROR", "Cash reconciliation") not in flags and ("ERROR", "Top sheet balance") not in flags
 
 
 def test_case_by_case_needs_approval_and_authorization():
     r1 = make("P", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True, rules=rules("case_by_case"))
     assert r1.payments[0].eligibility == REVIEW and "authorization" in r1.payments[0].reason
     r2 = make("P", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True,
-              authorization="Email from UPM 10/03 (fictional)", rules=rules("case_by_case"))
+              authorization="Email from UPM 10/03 (fictional)", rules=rules("case_by_case"), **DOC)
     assert r2.payments[0].eligibility == ELIGIBLE
 
 
@@ -99,7 +105,7 @@ def test_acknowledged_exclusion_does_not_block_but_unresolved_review_does():
 def test_verify_mode_flags_prohibited_cards_without_modifying_anything():
     cash_only = rules("cash_only")
     listed = [make("1", "10.00", "Cash", rules=cash_only),
-              make("2", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True, rules=cash_only),
+              make("2", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True, rules=cash_only, **DOC),
               make("3", "50.00", "Amex", "AMEX 4201", rules=cash_only),
               make("4", "20.00", "Visa", "VISA 1234", rules=cash_only)]
     before = copy.deepcopy([(r.number, r.total, r.paid_by, [(c.amount, c.eligibility) for c in r.payments]) for r in listed])
@@ -113,6 +119,9 @@ def test_verify_mode_flags_prohibited_cards_without_modifying_anything():
     assert after == before                                      # never silently modifies the submitted envelope
     permit = check_completed_envelope(listed, rules("cash_and_approved_personal_cards"))
     assert ("2", "PASS", "Policy") in {(f["receipt"], f["severity"], f["check"]) for f in permit}
+    not_kept = [make("5", "30.00", "Visa", "VISA 5555", paid_by="crew_personal", personal_card_approved=True, rules=cash_only)]
+    found = check_completed_envelope(not_kept, rules("cash_and_approved_personal_cards"))
+    assert ("5", "WARNING", "Reimbursement not confirmed") in {(f["receipt"], f["severity"], f["check"]) for f in found}
     assert ("3", "ERROR", "Policy violation") in {(f["receipt"], f["severity"], f["check"]) for f in permit}
 
 
@@ -132,11 +141,11 @@ def test_create_mode_keeps_ineligible_out_of_topsheet(tmp_path):
                        FIX / "jobs" / "LK-0042_line_list.csv", tmp_path / "proj", FIX / "review.yaml", rules_path=rules_file)
     assert [r.source_name for r in res.envelope.excluded] == ["03_prop_depot_invoice.pdf", "04_harbor_light_diner_photo.jpg"]
     assert len(res.envelope.receipts) == 2
-    ws = openpyxl.load_workbook(res.version_dir / "PC001_TopSheet.xlsx")["PC Formulas (1)"]
+    ws = openpyxl.load_workbook(res.version_dir / "LK-0042-PC001_TopSheet.xlsx")["PC Formulas (1)"]
     assert [ws[f"E{r}"].value for r in (8, 9, 10)] == [81.3, 94.94, None]
     n = summary_numbers(res.envelope)
     assert (n["eligible_total"], n["ineligible_policy"]) == (D("176.24"), D("155.28"))
     assert {(f.scope, f.check) for f in res.flags} >= {("03_prop_depot_invoice.pdf", "Job policy - ineligible"),
                                                        ("04_harbor_light_diner_photo.jpg", "Job policy - ineligible")}
     assert sorted(p.name for p in (res.version_dir / "receipts_annotated").iterdir()) == [
-        "PC001-001_2026-10-14_Hardware-Barn_81.30.pdf", "PC001-002_2026-10-15_Copper-Kettle-Cafe_94.94.pdf"]
+        "LK-0042-PC001-001_2026-10-14_Hardware-Barn_81.30.pdf", "LK-0042-PC001-002_2026-10-15_Copper-Kettle-Cafe_94.94.pdf"]

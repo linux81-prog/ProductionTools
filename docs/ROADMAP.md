@@ -99,6 +99,6 @@ Additions planned for when PO work starts:
   cloud environment yet.
 - A HotBudget reference file.
 - A blank PO top-sheet template, and the PO numbering convention.
-- Confirmation of two points about the master top sheet: what "Category" means, and
-  whether the envelope ID should appear on the sheet.
+- Confirmation from your accounting department of what TOTAL DISBURSED (E47) on the master
+  top sheet is used for. Until then it stays blank.
 - Later: blank or fictional examples of completed envelopes in other formats, to test Mode B.

@@ -54,6 +54,7 @@ class TemplateProfile:
     types: dict = None                 # cell/column -> value type
     replace_formulas: dict = None      # header cell -> the exact template formula the user approved replacing
     protected_formulas: tuple = ()     # "Sheet!Cell" formulas that must stay intact (e.g. page numbering)
+    never_write: tuple = ()            # cells the app must never fill (e.g. TOTAL DISBURSED until confirmed)
     receipt_number_style: str = "full"  # "full" -> PC001-003 ; "index" -> 3
 
     def cells_for(self, n_lines: int) -> list[str]:
@@ -100,8 +101,13 @@ def load_profile(path: Path) -> TemplateProfile:
         raise TemplateMappingError("receipt_number must be 'full' or 'index'")
     profile = TemplateProfile(data["name"], template, data["sheet"], header, int(li["first_row"]),
                               int(li["max_rows"]), columns, data.get("overflow", "refuse"), path, types,
-                              replace, tuple(data.get("protected_formulas", [])), style)
+                              replace, tuple(data.get("protected_formulas", [])),
+                              never_write=tuple(str(c).upper() for c in data.get("never_write", [])),
+                              receipt_number_style=style)
     line_cells = {f"{c}{profile.first_row + i}" for i in range(profile.max_rows) for c in columns.values()}
+    forbidden = (line_cells | set(header.values())) & set(profile.never_write)
+    if forbidden:
+        raise TemplateMappingError(f"Profile maps cells it must never write: {sorted(forbidden)}")
     clash = line_cells & set(header.values())
     if clash:
         raise TemplateMappingError(f"Header cells overlap the line-item table: {sorted(clash)}")

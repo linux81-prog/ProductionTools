@@ -23,7 +23,7 @@ Standing rules apply throughout:
   Formatting, formulas, merged cells, hidden columns and print layout are preserved, and
   this is verified automatically every time (the copy is rejected if the check fails).
 - Cells that contain formulas are never written. For example, the master template's
-  "Envelope No" cell is a formula, so it's left alone.
+  "Envelope No" cell is page numbering, so it's left alone.
 - **The final top-sheet PDF is made by Microsoft Excel on the Mac** (Stage 2), with the
   agreed manual Excel export as the fallback.
 - The first real profile is for the user's master template:
@@ -32,20 +32,41 @@ Standing rules apply throughout:
   - Continuation onto sheets 2–4 comes later; for now more than 35 receipts stops with
     a clear message.
   - "Category" holds the crew member's department (confirmed).
-  - "Envelope No" holds the **unique envelope ID**. This is the single, explicitly approved
-    exception to the rule against changing formulas. It replaces the "1 of N" formula on
-    sheet 1 of the filled copy only.
-  - Before replacing, the app checks that the cell still holds exactly
-    `=CONCATENATE("1 of ",V2)`. If it doesn't (a different template or a wrong cell), it
-    refuses and writes nothing.
-  - The page-numbering machinery is checked on every fill and must be unchanged: the
-    envelope-count formula in V2 and the "2 of N", "3 of N" and "4 of N" labels on the
-    continuation sheets. Only sheet 1's own "1 of N" label is replaced by the ID.
-  - Every other formula cell stays protected.
+  - **"Envelope No" (S3) is the template's own page numbering** ("1 of N", "2 of N"...). It
+    is preserved on every sheet and never written to. The ProductionTools submission ID
+    appears only in file names and reports, never in a spreadsheet cell.
+  - **TOTAL DISBURSED (E47) is left blank** and marked never-write until its intended use is
+    confirmed with accounting.
+  - Checked as unchanged on every fill: the page numbering (S3 on all four sheets, V2) and
+    the totals formulas (E44, E46, E49). Every other formula is protected anyway.
+  - The generic "replace an approved formula" mechanism still exists for other templates,
+    but the master template doesn't use it.
 
-## 1b. Unique envelope IDs
+### How the master template calculates (as examined)
+- **One sheet = one physical envelope.** Sheet 1 has 35 receipt rows. Sheets 2–4 are
+  continuation envelopes with 40 rows each. Sheet 2 is pre-numbered 36–75 and sheet 3
+  starts at 76–85.
+- **TOTAL (THIS ENVELOPE):** the sum of that sheet's Amount column (sheet 1 E44; sheets 2–4 E49).
+- **TOTAL (ALL ENVELOPES)** (sheet 1 E46): sheet 1's total plus the totals of sheets 2–4.
+- **AMOUNT RECEIVED** (E48): the cash advanced (the float). The app fills this.
+- **TOTAL DISBURSED** (E47): typed in by hand. Its purpose is unconfirmed, so it's left blank.
+- **BALANCE DUE COMPANY (EMPLOYEE)** (E49) = received − disbursed − all envelopes. A
+  positive figure is owed to the company; a negative figure (red, in brackets) is owed to
+  the employee.
+- **"1 of N"**: N (V2) is the highest sheet with a non-zero total.
+- **Line-number breakdown:** up to 14 distinct line numbers across all sheets become columns.
+  Per-sheet and all-envelope subtotals are calculated, with error checks for too many line
+  numbers and for a breakdown that doesn't equal the total.
+
+## 1b. Unique submission IDs
 - Default format: `{production number}-{envelope number}`, e.g. `LK-0042-PC001`. A custom
   ID or format can be set per envelope.
+- Used **only in file names and reports**:
+  - `LK-0042-PC001_TopSheet.xlsx`
+  - `LK-0042-PC001-003_2026-10-16_Prop-Depot-Supply-Co_100.29.pdf`
+  - the title of the reconciliation report
+
+  It is never inserted into a spreadsheet cell.
 - Each ID is recorded in an append-only registry, a list in the project folder that is only
   ever added to. Re-running the same envelope reuses its ID. A *different* envelope that tries
   to use an existing ID is refused with a clear message.
@@ -135,18 +156,37 @@ sheet, but it's listed in the report.
 
 **Money is tracked in separate buckets:**
 
+**Personally paid expenses and the top sheet (Option B). This applies only where the job's
+rules allow personal card expenses (or for the crew member's own cash).** The master top
+sheet nets every listed expense against the float. So a personally paid expense is listed
+**only** if the reviewer:
+1. approves it under the job's rules, adding an authorization reference on case-by-case jobs;
+2. explicitly confirms the crew member was reimbursed by **keeping that amount from the
+   float** (`reimbursed_from_float`);
+3. **documents** that reimbursement (`reimbursement_documentation`).
+
+If steps 2 and 3 aren't both done, the expense is **left out of the envelope** and flagged for
+**separate reimbursement**. It's never assumed to have been reimbursed.
+
+- On **cash-only jobs**, personal card purchases are excluded entirely; float confirmation
+  can't override that.
+- **Production card purchases are always excluded,** whatever the job's rules.
+
+**Money buckets:**
+
 | Bucket | Meaning |
 |---|---|
-| Eligible expenses | the top sheet total |
-| Float disbursements | eligible money that actually left the float: cash, or a personal expense *explicitly recorded* as reimbursed from the float |
-| Personal reimbursement owed | approved personal expenses not paid back from the float |
+| Eligible expenses | the top sheet total (TOTAL ALL ENVELOPES) |
+| of which personal, reimbursed from the float | approved personal expenses whose float reimbursement is confirmed and documented |
+| Float disbursements | cash spent from the float, plus documented reimbursements kept from it |
+| Separate reimbursement | personal expenses whose float reimbursement wasn't confirmed: not in the envelope |
 | Held for review | not counted until resolved |
-| Ineligible: production card, and Ineligible: job policy | documented, never counted |
+| Ineligible: production card / job policy | documented, never counted |
 
-- **Cash expected back = float − float disbursements.** A personal card expense never reduces
-  the cash expected back unless reimbursement from the float was recorded.
-- The master template's own "Balance due" formula shows the net figure (float − eligible
-  expenses). The report shows the physical cash and the reimbursement owed separately.
+- **Cash expected back = float − float disbursements.** With the rules above, this always
+  equals the **template's own balance** (amount received − total of all envelopes, with TOTAL
+  DISBURSED blank).
+- The report checks that the two figures match, and flags an ERROR if they ever don't.
 
 **In both modes:**
 - **Create:** ineligible or pending items never reach the generated top sheet or the envelope
@@ -228,9 +268,10 @@ Rules for Mode B:
 | Verify-mode policy check on a completed envelope (logic only; no screens), proven not to modify its inputs | `policy.check_completed_envelope` |
 | Simplified annotations (circles + small number), duplicate-mark detection, annotated/clean outputs | `petty_cash/annotate.py` |
 | User-supplied templates through mapping profiles, typed cells, surgical filling, two-method preservation check | `core/xlsx_fill.py`, `core/xlsx_integrity.py`, `petty_cash/mapping.py` |
-| Master template profile, guarded Envelope No replacement, protected page-numbering formulas | `fixtures/templates/master_pc/` |
+| Master template profile: "1 of N" page numbering preserved, TOTAL DISBURSED never written, totals formulas checked on every fill | `fixtures/templates/master_pc/` |
+| Option B: personally paid expenses listed only with confirmed, documented float reimbursement; otherwise separate reimbursement; top sheet balance reconciled with cash expected back | `petty_cash/policy.py`, `recon.py` |
 | Job line lists → account descriptions (purchase description kept separate) | `petty_cash/line_list.py` |
-| Unique envelope IDs with a project registry | `petty_cash/envelope_ids.py` |
+| Unique submission IDs with a project registry (used in file names and reports only) | `petty_cash/envelope_ids.py` |
 | Reconciliation report (PDF and Excel), combined PDFs with bookmarks | `petty_cash/recon.py`, `pdf_out.py` |
 | Review decisions applied from a file (a stand-in for the review screen) | `petty_cash/review.py` |
 

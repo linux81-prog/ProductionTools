@@ -16,7 +16,8 @@ Money is tracked in separate buckets so eligibility never gets confused with cas
   * float disbursement    - eligible AND actually paid from the petty cash float
                             (cash from the float, or a personal expense explicitly
                             recorded as reimbursed from the float)
-  * personal owed         - eligible, paid personally, NOT yet reimbursed from the float
+  * personal owed         - paid personally, reimbursement from the float NOT confirmed:
+                            kept out of the envelope and handled separately
   * company card          - never counted
 Unknown classifications are never guessed. A tip is counted exactly once.
 """
@@ -114,10 +115,8 @@ def float_disbursement(receipt) -> Decimal:
 
 
 def personal_owed(receipt) -> Decimal:
-    """Eligible personally paid money not (yet) reimbursed from the float."""
-    if receipt.reimbursed_from_float:
-        return ZERO
-    return sum((c.amount for c in receipt.payments if c.eligibility == "eligible" and c.paid_by == "crew_personal"), ZERO)
+    """Personally paid money that must be reimbursed SEPARATELY (not through this envelope)."""
+    return sum((c.amount for c in receipt.payments if c.eligibility == "separate"), ZERO)
 
 
 def describe(c: Component) -> str:

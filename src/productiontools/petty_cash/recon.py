@@ -99,10 +99,10 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
             f"Float ${env.float_amount} − float disbursements ${n_['float_disbursements']} = ${n_['expected_return']} cash expected back; "
             f"${env.cash_returned} returned. {kind} by ${abs(diff)}.",
             "Resolve with the crew member (missing receipt, lost-receipt affidavit, or cash correction).")
-    if n_["personal_owed"]:
-        add("INFO", "Envelope", "Reimbursement owed", f"${n_['personal_owed']} of approved personally paid expenses has not been "
-            "reimbursed from the float, so it does not reduce the cash expected back.",
-            "Reimburse through accounting, or record it if it was paid out of the float.")
+    if n_["template_balance"] != n_["expected_return"]:
+        add("ERROR", "Envelope", "Top sheet balance", f"The top sheet's balance (amount received ${env.float_amount} − total "
+            f"${n_['eligible_total']} = ${n_['template_balance']}) does not equal the cash expected back (${n_['expected_return']}).",
+            "Every personally paid expense on the top sheet needs a confirmed, documented reimbursement from the float.")
     if not env.receipts:
         add("ERROR", "Envelope", "No receipts", "Envelope has no receipts.", "Add receipts.")
     order = {"ERROR": 0, "WARNING": 1, "INFO": 2}
@@ -163,10 +163,13 @@ def _payment_flags(r, n, add, excluded: bool = False) -> None:
             else:
                 add("ERROR", n, check, f"The {what}: {c.reason}. Excluded from this envelope.{where}",
                     "Acknowledge the exclusion on review.")
-        elif c.method not in (None, "Cash") and c.paid_by == "crew_personal":
-            add("WARNING", n, "Personal card", f"The {what}: {c.reason}. Counted as eligible; "
-                + ("recorded as reimbursed from the float." if r.reimbursed_from_float else "reimbursement is still owed (not paid from the float)."),
-                "Sign off that this personal card expense is allowed under the job's policy.")
+        elif c.eligibility == "separate":
+            add("WARNING", n, "Separate reimbursement", f"The {what}: {c.reason}.",
+                "Reimburse separately through accounting, or confirm and document that the crew member kept it from the float.")
+        elif c.paid_by == "crew_personal":
+            kind = "Personal card" if c.method not in (None, "Cash") else "Personal cash"
+            add("WARNING", n, kind, f"The {what}: {c.reason}. Listed on the top sheet.",
+                "Sign off that this personally paid expense is allowed under the job's policy and the reimbursement is documented.")
         elif "inferred" in c.source and not r.verified_by:
             add("WARNING", n, "Payment classification", f"The {what}.", "Confirm on review.")
 
@@ -174,10 +177,15 @@ def _payment_flags(r, n, add, excluded: bool = False) -> None:
 def summary_numbers(env: Envelope) -> dict:
     b = bucket_totals(env.receipts, env.excluded)
     expected = env.float_amount - b["float_disbursements"]
+    personal_in_env = sum((c.amount for r in env.receipts for c in r.payments
+                           if c.eligibility == "eligible" and c.paid_by == "crew_personal"), ZERO)
     return {"float": env.float_amount, "receipts_total": b["eligible_total"], "eligible_total": b["eligible_total"],
             "float_disbursements": b["float_disbursements"], "expected_return": expected,
             "cash_returned": env.cash_returned, "over_short": env.cash_returned - expected,
             "personal_owed": b["personal_owed"], "held_for_review": b["held_for_review"],
+            "personal_reimbursed_from_float": personal_in_env,
+            # The master template: BALANCE DUE = AMOUNT RECEIVED - TOTAL DISBURSED (left blank) - TOTAL (ALL ENVELOPES)
+            "template_balance": env.float_amount - b["eligible_total"],
             "ineligible_company_card": b["ineligible_company_card"], "ineligible_policy": b["ineligible_policy"],
             "reported_total": env.reported_total, "receipt_count": len(env.receipts), "excluded_count": len(env.excluded),
             "policy": env.rules.payment_policy if env.rules else "cash_only"}
@@ -194,10 +202,10 @@ def report_pdf(env: Envelope, flags: list[Flag], extra_sections: list[tuple[str,
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.6 * inch, rightMargin=0.6 * inch,
                             topMargin=0.6 * inch, bottomMargin=0.6 * inch,
-                            title=f"Reconciliation report {env.envelope_number}", author="ProductionTools")
+                            title=f"Reconciliation report {env.envelope_id or env.envelope_number}", author="ProductionTools")
     ss = getSampleStyleSheet()
     small = ParagraphStyle("small", parent=ss["BodyText"], fontSize=8.5, leading=10.5)
-    story = [Paragraph(f"Petty Cash Reconciliation Report — {env.envelope_number}", ss["Title"]),
+    story = [Paragraph(f"Petty Cash Reconciliation Report — {env.envelope_id or env.envelope_number}", ss["Title"]),
              Paragraph(f"{env.production} ({env.production_number}) · {env.company} · {env.crew_member}, {env.department} · "
                        f"Period {env.period_start:%m/%d/%Y}–{env.period_end:%m/%d/%Y}", small), Spacer(1, 10)]
     n = summary_numbers(env)
@@ -208,20 +216,22 @@ def report_pdf(env: Envelope, flags: list[Flag], extra_sections: list[tuple[str,
     story.append(Spacer(1, 6))
     summ = [["Float issued", money(n["float"])],
             ["Eligible expenses (top sheet total)", money(n["eligible_total"])],
-            ["  paid from the float", money(n["float_disbursements"])],
-            ["  paid personally, reimbursement still owed", money(n["personal_owed"])],
+            ["  of which paid personally, reimbursed by keeping it from the float", money(n["personal_reimbursed_from_float"])],
+            ["Float disbursements (cash spent + documented float reimbursements)", money(n["float_disbursements"])],
             ["Cash expected back (float − float disbursements)", money(n["expected_return"])],
+            ["Top sheet balance due (template formula)", money(n["template_balance"])],
             ["Cash returned", money(n["cash_returned"])],
             ["Cash over / (short)", money(n["over_short"])],
             ["Crew-reported total", money(n["reported_total"])],
             ["Held for review (not counted)", money(n["held_for_review"])],
+            ["Separate reimbursement - not in this envelope", money(n["personal_owed"])],
             ["Ineligible: production company card", money(n["ineligible_company_card"])],
             ["Ineligible: job policy", money(n["ineligible_policy"])],
             ["Receipts in envelope / excluded", f"{n['receipt_count']} / {n['excluded_count']}"]]
-    t = Table(summ, colWidths=[3.2 * inch, 1.4 * inch])
+    t = Table(summ, colWidths=[4.2 * inch, 1.3 * inch])
     t.setStyle(TableStyle([("FONT", (0, 0), (-1, -1), "Helvetica", 9.5), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                            ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
-                           ("BACKGROUND", (0, 6), (-1, 6), colors.HexColor("#F8D7DA") if n["over_short"] else colors.white)]))
+                           ("BACKGROUND", (0, 7), (-1, 7), colors.HexColor("#F8D7DA") if n["over_short"] else colors.white)]))
     story += [t, Spacer(1, 12)]
 
     counts = {s: sum(f.severity == s for f in flags) for s in ("ERROR", "WARNING", "INFO")}
