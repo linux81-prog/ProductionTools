@@ -1,0 +1,33 @@
+# Template profile: tells ProductionTools which cell holds what.
+# A new company's top sheet needs only a new profile like this one - no code changes.
+name: Bluebird Lane Productions - Petty Cash Top Sheet (fictional)
+profile_version: 1
+template_file: bluebird_lane_topsheet.xlsx
+sheet: Top Sheet
+
+header:            # envelope field -> cell (top-left cell of a merged block)
+  production: B4
+  production_number: F4
+  crew_member: B5
+  envelope_number: F5
+  department: B6
+  position: F6
+  period_start: B7
+  period_end: D7
+  float_amount: F7
+  cash_returned: G28
+  reported_total: C27
+
+line_items:
+  first_row: 10
+  max_rows: 15
+  columns:         # receipt field -> column
+    number: A
+    date: B
+    vendor: C
+    description: D
+    account_code: E
+    amount: G
+  # Column F holds the template's own VLOOKUP formula and is deliberately not mapped.
+
+overflow: refuse   # Stage 1: more receipts than rows -> stop and ask. (Continuation sheets: later stage.)

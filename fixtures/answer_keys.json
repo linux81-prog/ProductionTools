@@ -1,0 +1,26 @@
+{
+  "01_hardware_barn_photo.jpg": {
+    "vendor": "Hardware Barn",
+    "date": "2026-10-14",
+    "subtotal": "74.25",
+    "tax": "7.05",
+    "total": "81.30",
+    "payment": "Cash"
+  },
+  "02_copper_kettle_scan.pdf": {
+    "vendor": "Copper Kettle Cafe",
+    "date": "2026-10-15",
+    "subtotal": "86.25",
+    "tax": "8.19",
+    "total": "94.94",
+    "payment": "Cash"
+  },
+  "03_prop_depot_invoice.pdf": {
+    "vendor": "Prop Depot Supply Co.",
+    "date": "2026-10-16",
+    "subtotal": "82.50",
+    "tax": "7.84",
+    "total": "100.29",
+    "payment": "Visa"
+  }
+}

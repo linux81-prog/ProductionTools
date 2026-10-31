@@ -1,0 +1,110 @@
+{
+  "s01_clean_photo.jpg": {
+    "vendor": "Grip & Gaff Supply",
+    "date": "2026-10-02",
+    "subtotal": "111.80",
+    "tax": "10.62",
+    "total": "122.42",
+    "payment": "Cash",
+    "condition": "clean photo"
+  },
+  "s02_motion_blur.jpg": {
+    "vendor": "Sunset Lumber",
+    "date": "2026-10-23",
+    "subtotal": "85.45",
+    "tax": "8.12",
+    "total": "93.57",
+    "payment": "Cash",
+    "condition": "motion blur"
+  },
+  "s03_heavy_blur.jpg": {
+    "vendor": "Main ST Deli",
+    "date": "2026-10-14",
+    "subtotal": "100.45",
+    "tax": "9.54",
+    "total": "109.99",
+    "payment": "Cash",
+    "condition": "heavy blur"
+  },
+  "s04_sensor_noise.jpg": {
+    "vendor": "Studio City Office Mart",
+    "date": "2026-10-24",
+    "subtotal": "75.89",
+    "tax": "7.21",
+    "total": "83.10",
+    "payment": "Cash",
+    "condition": "sensor noise"
+  },
+  "s05_heavy_noise.jpg": {
+    "vendor": "Blue Door Bakery",
+    "date": "2026-10-06",
+    "subtotal": "139.37",
+    "tax": "13.24",
+    "total": "152.61",
+    "payment": "Cash",
+    "condition": "heavy noise"
+  },
+  "s06_heavy_crumple.jpg": {
+    "vendor": "Valley Paint Center",
+    "date": "2026-10-15",
+    "subtotal": "84.21",
+    "tax": "8.00",
+    "total": "92.21",
+    "payment": "Cash",
+    "condition": "heavy crumple"
+  },
+  "s07_faded_thermal.jpg": {
+    "vendor": "Corner Fuel Stop",
+    "date": "2026-10-19",
+    "subtotal": "75.56",
+    "tax": "7.18",
+    "total": "82.74",
+    "payment": "Cash",
+    "condition": "faded thermal"
+  },
+  "s08_very_faded_thermal.jpg": {
+    "vendor": "Hilltop Hardware",
+    "date": "2026-10-19",
+    "subtotal": "70.50",
+    "tax": "6.70",
+    "total": "77.20",
+    "payment": "Cash",
+    "condition": "very faded thermal"
+  },
+  "s09_dim_light.jpg": {
+    "vendor": "Lakeside Market",
+    "date": "2026-10-12",
+    "subtotal": "49.26",
+    "tax": "4.68",
+    "total": "53.94",
+    "payment": "Cash",
+    "condition": "dim light"
+  },
+  "s10_low_resolution.jpg": {
+    "vendor": "Ace Party Rentals",
+    "date": "2026-10-12",
+    "subtotal": "149.25",
+    "tax": "14.18",
+    "total": "163.43",
+    "payment": "Cash",
+    "condition": "low resolution"
+  },
+  "s11_very_low_resolution.jpg": {
+    "vendor": "Redwood Craft Supply",
+    "date": "2026-10-23",
+    "subtotal": "43.87",
+    "tax": "4.17",
+    "total": "48.04",
+    "payment": "Cash",
+    "condition": "very low resolution"
+  },
+  "s12_blur_and_noise_and_fade.jpg": {
+    "vendor": "North End Pharmacy",
+    "date": "2026-10-04",
+    "subtotal": "160.37",
+    "tax": "15.24",
+    "total": "175.61",
+    "payment": "Cash",
+    "condition": "blur + noise + fade"
+  }
+}

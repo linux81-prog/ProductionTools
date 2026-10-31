@@ -1,0 +1,20 @@
+# Python / tooling
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# NEVER commit real production data. Real projects live outside the repo.
+ProductionTools-Data/
+projects/
+data/
+*.real.*
+work/
+
+# Local scratch outputs from demo runs (the curated fictional demo lives in docs/stage1-demo)
+demo_runs/
+
+.DS_Store

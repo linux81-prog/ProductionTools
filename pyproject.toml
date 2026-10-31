@@ -1,0 +1,33 @@
+[project]
+name = "productiontools"
+version = "0.1.0"
+description = "Private, offline production-management tools (Stage 1: petty cash pipeline demo)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "rapidocr>=3.4",
+    "onnxruntime>=1.18",
+    "opencv-python-headless>=4.9",
+    "numpy>=1.26",
+    "pillow>=10.0",
+    "pillow-heif>=0.16",
+    "pypdf>=5.0",
+    "pypdfium2>=4.30",
+    "reportlab>=4.0",
+    "openpyxl>=3.1",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/productiontools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

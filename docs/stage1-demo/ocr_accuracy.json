@@ -1,0 +1,822 @@
+{
+  "demo": {
+    "receipts": 3,
+    "field_checks": 18,
+    "correct": 18,
+    "accuracy": 1.0,
+    "wrong": 0,
+    "missing": 0,
+    "wrong_and_NOT_flagged": 0,
+    "review_threshold": 0.8,
+    "per_field": {
+      "vendor": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      },
+      "date": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      },
+      "subtotal": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      },
+      "tax": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      },
+      "total": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      },
+      "payment": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      }
+    },
+    "rows": [
+      {
+        "file": "01_hardware_barn_photo.jpg",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Hardware Barn",
+            "got": "Hardware Barn",
+            "status": "correct",
+            "confidence": 0.819,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-14",
+            "got": "2026-10-14",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "74.25",
+            "got": "74.25",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "7.05",
+            "got": "7.05",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "81.30",
+            "got": "81.30",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "02_copper_kettle_scan.pdf",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Copper Kettle Cafe",
+            "got": "Copper Kettle Cafe",
+            "status": "correct",
+            "confidence": 0.826,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-15",
+            "got": "2026-10-15",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "86.25",
+            "got": "86.25",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "8.19",
+            "got": "8.19",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "94.94",
+            "got": "94.94",
+            "status": "correct",
+            "confidence": 0.718,
+            "flagged_for_review": true
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "03_prop_depot_invoice.pdf",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Prop Depot Supply Co.",
+            "got": "Prop Depot Supply Co.",
+            "status": "correct",
+            "confidence": 0.84,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-16",
+            "got": "2026-10-16",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "82.50",
+            "got": "82.50",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "7.84",
+            "got": "7.84",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "100.29",
+            "got": "100.29",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Visa",
+            "got": "Visa",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      }
+    ]
+  },
+  "stress": {
+    "receipts": 12,
+    "field_checks": 72,
+    "correct": 68,
+    "accuracy": 0.9444,
+    "wrong": 2,
+    "missing": 2,
+    "wrong_and_NOT_flagged": 0,
+    "review_threshold": 0.8,
+    "per_field": {
+      "vendor": {
+        "correct": 11,
+        "wrong": 1,
+        "missing": 0,
+        "wrong_but_flagged": 1
+      },
+      "date": {
+        "correct": 12,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      },
+      "subtotal": {
+        "correct": 11,
+        "wrong": 0,
+        "missing": 1,
+        "wrong_but_flagged": 0
+      },
+      "tax": {
+        "correct": 11,
+        "wrong": 1,
+        "missing": 0,
+        "wrong_but_flagged": 1
+      },
+      "total": {
+        "correct": 11,
+        "wrong": 0,
+        "missing": 1,
+        "wrong_but_flagged": 0
+      },
+      "payment": {
+        "correct": 12,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0
+      }
+    },
+    "rows": [
+      {
+        "file": "s01_clean_photo.jpg",
+        "condition": "clean photo",
+        "fields": {
+          "vendor": {
+            "expected": "Grip & Gaff Supply",
+            "got": "Grip & Gaff Supply",
+            "status": "correct",
+            "confidence": 0.829,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-02",
+            "got": "2026-10-02",
+            "status": "correct",
+            "confidence": 0.79,
+            "flagged_for_review": true
+          },
+          "subtotal": {
+            "expected": "111.80",
+            "got": "111.80",
+            "status": "correct",
+            "confidence": 0.949,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "10.62",
+            "got": "10.62",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "122.42",
+            "got": "122.42",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s02_motion_blur.jpg",
+        "condition": "motion blur",
+        "fields": {
+          "vendor": {
+            "expected": "Sunset Lumber",
+            "got": "Sunset Lumber",
+            "status": "correct",
+            "confidence": 0.712,
+            "flagged_for_review": true
+          },
+          "date": {
+            "expected": "2026-10-23",
+            "got": "2026-10-23",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "85.45",
+            "got": "85.45",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "8.12",
+            "got": "8.12",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "93.57",
+            "got": "93.57",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s03_heavy_blur.jpg",
+        "condition": "heavy blur",
+        "fields": {
+          "vendor": {
+            "expected": "Main ST Deli",
+            "got": "C0o3e Ans",
+            "status": "wrong",
+            "confidence": 0.205,
+            "flagged_for_review": true
+          },
+          "date": {
+            "expected": "2026-10-14",
+            "got": "2026-10-14",
+            "status": "correct",
+            "confidence": 0.848,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "100.45",
+            "got": null,
+            "status": "missing",
+            "confidence": 0.0,
+            "flagged_for_review": true
+          },
+          "tax": {
+            "expected": "9.54",
+            "got": "109.99",
+            "status": "wrong",
+            "confidence": 0.768,
+            "flagged_for_review": true
+          },
+          "total": {
+            "expected": "109.99",
+            "got": null,
+            "status": "missing",
+            "confidence": 0.0,
+            "flagged_for_review": true
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.899,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s04_sensor_noise.jpg",
+        "condition": "sensor noise",
+        "fields": {
+          "vendor": {
+            "expected": "Studio City Office Mart",
+            "got": "Studio City Office Mart",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-24",
+            "got": "2026-10-24",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "75.89",
+            "got": "75.89",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "7.21",
+            "got": "7.21",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "83.10",
+            "got": "83.10",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s05_heavy_noise.jpg",
+        "condition": "heavy noise",
+        "fields": {
+          "vendor": {
+            "expected": "Blue Door Bakery",
+            "got": "Blue Door Bakery",
+            "status": "correct",
+            "confidence": 0.817,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-06",
+            "got": "2026-10-06",
+            "status": "correct",
+            "confidence": 0.79,
+            "flagged_for_review": true
+          },
+          "subtotal": {
+            "expected": "139.37",
+            "got": "139.37",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "13.24",
+            "got": "13.24",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "152.61",
+            "got": "152.61",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s06_heavy_crumple.jpg",
+        "condition": "heavy crumple",
+        "fields": {
+          "vendor": {
+            "expected": "Valley Paint Center",
+            "got": "Valley Paint Center",
+            "status": "correct",
+            "confidence": 0.795,
+            "flagged_for_review": true
+          },
+          "date": {
+            "expected": "2026-10-15",
+            "got": "2026-10-15",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "84.21",
+            "got": "84.21",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "8.00",
+            "got": "8.00",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "92.21",
+            "got": "92.21",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s07_faded_thermal.jpg",
+        "condition": "faded thermal",
+        "fields": {
+          "vendor": {
+            "expected": "Corner Fuel Stop",
+            "got": "Corner Fuel Stop",
+            "status": "correct",
+            "confidence": 0.857,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-19",
+            "got": "2026-10-19",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "75.56",
+            "got": "75.56",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "7.18",
+            "got": "7.18",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "82.74",
+            "got": "82.74",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.899,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s08_very_faded_thermal.jpg",
+        "condition": "very faded thermal",
+        "fields": {
+          "vendor": {
+            "expected": "Hilltop Hardware",
+            "got": "Hilltop Hardware",
+            "status": "correct",
+            "confidence": 0.826,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-19",
+            "got": "2026-10-19",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "70.50",
+            "got": "70.50",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "6.70",
+            "got": "6.70",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "77.20",
+            "got": "77.20",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s09_dim_light.jpg",
+        "condition": "dim light",
+        "fields": {
+          "vendor": {
+            "expected": "Lakeside Market",
+            "got": "Lakeside Market",
+            "status": "correct",
+            "confidence": 0.823,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-12",
+            "got": "2026-10-12",
+            "status": "correct",
+            "confidence": 0.79,
+            "flagged_for_review": true
+          },
+          "subtotal": {
+            "expected": "49.26",
+            "got": "49.26",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "4.68",
+            "got": "4.68",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "53.94",
+            "got": "53.94",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s10_low_resolution.jpg",
+        "condition": "low resolution",
+        "fields": {
+          "vendor": {
+            "expected": "Ace Party Rentals",
+            "got": "Ace Party Rentals",
+            "status": "correct",
+            "confidence": 0.824,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-12",
+            "got": "2026-10-12",
+            "status": "correct",
+            "confidence": 0.79,
+            "flagged_for_review": true
+          },
+          "subtotal": {
+            "expected": "149.25",
+            "got": "149.25",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "14.18",
+            "got": "14.18",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "163.43",
+            "got": "163.43",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s11_very_low_resolution.jpg",
+        "condition": "very low resolution",
+        "fields": {
+          "vendor": {
+            "expected": "Redwood Craft Supply",
+            "got": "Redwood Craft Supply",
+            "status": "correct",
+            "confidence": 0.717,
+            "flagged_for_review": true
+          },
+          "date": {
+            "expected": "2026-10-23",
+            "got": "2026-10-23",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "43.87",
+            "got": "43.87",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "4.17",
+            "got": "4.17",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "48.04",
+            "got": "48.04",
+            "status": "correct",
+            "confidence": 0.942,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      },
+      {
+        "file": "s12_blur_and_noise_and_fade.jpg",
+        "condition": "blur + noise + fade",
+        "fields": {
+          "vendor": {
+            "expected": "North End Pharmacy",
+            "got": "North End Pharmacy",
+            "status": "correct",
+            "confidence": 0.811,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-04",
+            "got": "2026-10-04",
+            "status": "correct",
+            "confidence": 0.79,
+            "flagged_for_review": true
+          },
+          "subtotal": {
+            "expected": "160.37",
+            "got": "160.37",
+            "status": "correct",
+            "confidence": 0.949,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "15.24",
+            "got": "15.24",
+            "status": "correct",
+            "confidence": 0.919,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "175.61",
+            "got": "175.61",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Cash",
+            "got": "Cash",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          }
+        }
+      }
+    ]
+  }
+}

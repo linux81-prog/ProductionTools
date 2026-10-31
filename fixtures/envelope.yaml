@@ -1,0 +1,18 @@
+# FICTIONAL petty cash envelope used for the Stage 1 demo.
+envelope_number: PC001
+production: The Lighthouse Keeper
+production_number: LK-0042
+company: Bluebird Lane Productions
+crew_member: Jordan Avery
+department: Art
+position: Art Department Coordinator
+period_start: 2026-10-12
+period_end: 2026-10-18
+float_amount: "300.00"
+reported_total: "276.53"   # what the crew member wrote on the envelope
+cash_returned: "21.47"     # cash handed back (deliberately $2.00 short for the demo)
+per_receipt_limit: "250.00"
+receipts:
+  - 01_hardware_barn_photo.jpg
+  - 02_copper_kettle_scan.pdf
+  - 03_prop_depot_invoice.pdf
