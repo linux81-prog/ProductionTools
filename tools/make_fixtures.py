@@ -443,10 +443,12 @@ overflow: refuse   # Stage 1: more receipts than rows -> stop and ask. (Continua
 ENVELOPE = """\
 # FICTIONAL petty cash envelope used for the Stage 1 demo.
 envelope_number: PC001
+# envelope_id defaults to "{production_number}-{envelope_number}" -> LK-0042-PC001 (unique per project)
 production: The Lighthouse Keeper
 production_number: LK-0042
 company: Bluebird Lane Productions
 crew_member: Jordan Avery
+crew_phone: "555-010-2020"   # fictional 555 number
 department: Art
 position: Art Department Coordinator
 period_start: 2026-10-12

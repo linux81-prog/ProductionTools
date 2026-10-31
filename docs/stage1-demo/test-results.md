@@ -1,10 +1,10 @@
 # Stage 1 — Test Results and Demo Report
 
-Generated 2026-10-31 20:23 in the cloud development environment. **All data is fictional.**
+Generated 2026-10-31 20:35 in the cloud development environment. **All data is fictional.**
 
 ## 1. Automated tests
 
-**Result: 48 passed, 1 warning in 51.15s**
+**Result: 52 passed, 1 warning in 59.61s**
 
 Every test runs with the app-level network lock installed, so any accidental outbound
 connection would make the suite fail.
@@ -32,6 +32,10 @@ tests/test_filestore.py::test_duplicate_import_is_detected_not_copied PASSED
 tests/test_filestore.py::test_verify_detects_a_changed_original PASSED
 tests/test_filestore.py::test_never_overwrite PASSED
 tests/test_filestore.py::test_versions_are_never_reused PASSED
+tests/test_line_list_and_ids.py::test_line_list_formats PASSED
+tests/test_line_list_and_ids.py::test_conflicting_duplicate_line_is_rejected PASSED
+tests/test_line_list_and_ids.py::test_description_filled_only_when_blank PASSED
+tests/test_line_list_and_ids.py::test_envelope_ids_unique_per_project PASSED
 tests/test_netguard.py::test_outbound_connection_is_blocked_and_recorded PASSED
 tests/test_netguard.py::test_dns_lookup_of_outside_name_is_blocked PASSED
 tests/test_netguard.py::test_udp_send_to_outside_is_blocked PASSED
@@ -153,10 +157,12 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 **Documented intentional changes (the only differences allowed):**
 - **Mapped cell values**: Only the cells listed in the template profile receive new values; each keeps its original formatting style.
 - **workbook.xml <calcPr fullCalcOnLoad="1">**: Tells Excel to recalculate every formula when the file is opened, so totals reflect the new values.
+- **Formula replaced in an explicitly approved cell**: Only where the template profile marks a cell replace_formula: true (e.g. the master template's Envelope No cell now shows the unique envelope ID instead of the '1 of N' formula).
 - **Row 'spans' hint (only if needed)**: An optional performance hint listing which columns a row uses; widened only when a mapped cell is outside it. No visual effect.
 
 **Allowed changes actually seen in this run:**
 - workbook.xml: fullCalcOnLoad="1" set (Excel recalculates on open)
+- S3: template formula replaced as approved in the profile
 
 The tests also confirm that the checker **catches** problems. It fails on a changed formula
 in an unmapped cell, and on a damaged logo image. They also confirm that filling **refuses**
@@ -170,6 +176,8 @@ to workbook.xml.
 |---|---|---|---|
 | ERROR | Envelope | Cash reconciliation | Float $300.00 − receipts $276.53 = $23.47 expected back; $21.47 returned. SHORT by $2.00. |
 | WARNING | PC001-002 | Receipt arithmetic | Subtotal $86.25 + tax $8.19 = $94.44, but the receipt's printed total is $94.94 (difference $0.50). |
+| INFO | PC001-001 | Description | Filled from the job's line list for line 2410: "Art Dept - Expendables". |
+| INFO | PC001-003 | Description | Filled from the job's line list for line 2510: "Props - Purchases". |
 | INFO | PC001-003 | Payment method | Receipt shows payment by Visa, not cash. |
 
 All three were planted on purpose in the fictional data: the crew member returned $2.00

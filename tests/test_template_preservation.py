@@ -135,5 +135,9 @@ def test_master_template_preserved(tmp_path):
     rep = xlsx_integrity.compare(master, out, "PC Formulas (1)", info["sheet_part"], values)
     assert rep.passed, [c for c in rep.checks if not c.passed]
     assert any("fullCalcOnLoad" in a for a in rep.allowed_changes_seen)   # template had an empty <calcPr/>
-    with pytest.raises(TemplateMappingError, match="formula"):
-        fill_template_copy(master, tmp_path / "x.xlsx", "PC Formulas (1)", {"S3": "PC001"})  # Envelope No is a formula
+    with pytest.raises(TemplateMappingError, match="formula"):  # not approved in this call -> refused
+        fill_template_copy(master, tmp_path / "x.xlsx", "PC Formulas (1)", {"S3": "PC001"})
+    approved = tmp_path / "approved.xlsx"
+    info2 = fill_template_copy(master, approved, "PC Formulas (1)", {**values, "S3": "LK-0042-PC001"}, replace_formulas=["S3"])
+    assert info2["formulas_replaced"] == ["S3"]
+    assert xlsx_integrity.compare(master, approved, "PC Formulas (1)", info2["sheet_part"], {**values, "S3": 1}).passed

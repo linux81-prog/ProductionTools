@@ -186,6 +186,11 @@
   "topsheet_pdf_source": "cloud preview (LibreOffice in the dev container; NOT Excel output, not part of the app)",
   "originals": [
     {
+      "file": "10d0e5149002_LK-0042_line_list.csv",
+      "unchanged": true,
+      "read_only": true
+    },
+    {
       "file": "f18d5ee190d3_01_hardware_barn_photo.jpg",
       "unchanged": true,
       "read_only": true
@@ -262,7 +267,8 @@
       }
     ],
     "allowed_changes_seen": [
-      "workbook.xml: fullCalcOnLoad=\"1\" set (Excel recalculates on open)"
+      "workbook.xml: fullCalcOnLoad=\"1\" set (Excel recalculates on open)",
+      "S3: template formula replaced as approved in the profile"
     ]
   }
 }

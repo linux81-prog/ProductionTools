@@ -97,6 +97,7 @@ class Receipt:
     annotation_notes: dict = field(default_factory=dict)
     account_code: str | None = None
     description: str | None = None
+    description_source: str = ""       # "reviewer" or "job line list"
     verified_by: str | None = None
     number_position: list[float] | None = None   # optional reviewer override (normalised box)
     overrides: list[dict] = field(default_factory=list)
@@ -134,4 +135,5 @@ class Envelope:
     reported_total: Decimal       # what the crew member wrote on the envelope
     per_receipt_limit: Decimal = Decimal("250.00")
     crew_phone: str = ""
+    envelope_id: str = ""         # unique envelope ID (unique within the project)
     receipts: list[Receipt] = field(default_factory=list)

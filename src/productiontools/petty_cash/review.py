@@ -71,6 +71,7 @@ def apply_review(receipts: list[Receipt], review: dict, audit: AuditLog) -> None
             audit.record("account_code_set", actor=reviewer, receipt=r.source_name, value=r.account_code)
         if "description" in d:
             r.description = str(d["description"])
+            r.description_source = "reviewer"
             audit.record("description_set", actor=reviewer, receipt=r.source_name, value=r.description)
         if d.get("confirm"):
             for f in r.fields.values():

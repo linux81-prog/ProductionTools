@@ -57,6 +57,7 @@ def topsheet_values(env: Envelope, profile: TemplateProfile) -> dict[str, object
         "envelope_number": env.envelope_number, "period_start": env.period_start, "period_end": env.period_end,
         "float_amount": env.float_amount, "cash_returned": env.cash_returned, "reported_total": env.reported_total,
         "receipts_total": total, "receipt_count": len(receipts), "crew_phone": env.crew_phone,
+        "envelope_id": env.envelope_id,
     }
     values: dict[str, object] = {cell: _typed(header_src[field], profile.types.get(cell, "auto"))
                                  for field, cell in profile.header.items()}
@@ -73,8 +74,10 @@ def topsheet_values(env: Envelope, profile: TemplateProfile) -> dict[str, object
 def fill_topsheet(env: Envelope, profile: TemplateProfile, dest: Path) -> dict:
     """Write the filled copy, then verify preservation. Raises if verification fails."""
     values = topsheet_values(env, profile)
-    info = fill_template_copy(profile.template_file, dest, profile.sheet, values)
+    info = fill_template_copy(profile.template_file, dest, profile.sheet, values, profile.replace_formulas)
     report = xlsx_integrity.compare(profile.template_file, dest, profile.sheet, info["sheet_part"], values.keys())
+    for cell in info["formulas_replaced"]:
+        report.allowed_changes_seen.append(f"{cell}: template formula replaced as approved in the profile")
     info["preservation"] = report.as_dict()
     if not report.passed:
         failed = [c.name for c in report.checks if not c.passed]

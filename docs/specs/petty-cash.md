@@ -31,8 +31,30 @@ Standing rules apply throughout:
   - Rows 8–42 of the first sheet hold 35 receipts.
   - Continuation onto sheets 2–4 comes later; for now more than 35 receipts stops with
     a clear message.
-  - Open questions for the user: what "Category" means, and whether the envelope ID
-    should appear anywhere on the sheet.
+  - "Category" holds the crew member's department (confirmed).
+  - "Envelope No" holds the **unique envelope ID**. It replaces the template's "1 of N"
+    formula in the filled copy only. The replacement is approved explicitly in the profile
+    (`replace_formula: true`) and recorded in the preservation report. All other formula
+    cells stay protected.
+
+## 1b. Unique envelope IDs
+- Default format: `{production number}-{envelope number}`, e.g. `LK-0042-PC001`. A custom
+  ID or format can be set per envelope.
+- Each ID is recorded in an append-only registry, a list in the project folder that is only
+  ever added to. Re-running the same envelope reuses its ID. A *different* envelope that tries
+  to use an existing ID is refused with a clear message.
+
+## 1c. Job line lists (preloaded line numbers)
+- Each job can have a **line list**: budget line numbers with their descriptions, loaded
+  once from CSV, Excel or YAML. The first two columns are used: line number, description.
+- When a receipt is given a line number, its **description is filled in automatically**
+  from the job's line list, unless the reviewer typed their own description, which always
+  wins. The reconciliation report notes each auto-filled description so it can be reviewed.
+- Line numbers not on the job's list are flagged as errors. Conflicting duplicate entries
+  in a list are rejected when it's loaded.
+- The line list is stored with the project's originals: fingerprinted and read-only.
+- Later: the browser app will offer the job's line numbers as a pick-list, and Budget
+  Conversion / the PO module will share the same list.
 
 ## 2. Receipt annotations (default output)
 - **Only** circles around the vendor name, the transaction date and the final total.

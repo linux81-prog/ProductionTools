@@ -14,7 +14,7 @@ import yaml
 from ..core.xlsx_fill import TemplateMappingError, split_ref
 
 HEADER_FIELDS = {
-    "crew_phone", "production", "production_number", "company", "crew_member", "department", "position",
+    "envelope_id", "crew_phone", "production", "production_number", "company", "crew_member", "department", "position",
     "envelope_number", "period_start", "period_end", "float_amount", "cash_returned",
     "reported_total", "receipts_total", "receipt_count",
 }
@@ -24,15 +24,15 @@ LINE_FIELDS = {"number", "date", "vendor", "description", "account_code", "amoun
 VALUE_TYPES = {"auto", "text", "number", "money", "date", "digits"}
 
 
-def _parse_target(v) -> tuple[str, str]:
-    """A target is either "B4" / "A" or {cell|col: ..., type: number|text|money|date}."""
+def _parse_target(v) -> tuple[str, str, bool]:
+    """A target is "B4" / "A", or {cell|col: ..., type: number|text|money|date|digits, replace_formula: bool}."""
     if isinstance(v, dict):
         ref = str(v.get("cell") or v.get("col")).upper()
         typ = v.get("type", "auto")
         if typ not in VALUE_TYPES:
             raise TemplateMappingError(f"Unknown value type {typ!r}")
-        return ref, typ
-    return str(v).upper(), "auto"
+        return ref, typ, bool(v.get("replace_formula", False))
+    return str(v).upper(), "auto", False
 
 
 @dataclass
@@ -47,6 +47,7 @@ class TemplateProfile:
     overflow: str
     source: Path
     types: dict = None                 # cell/column -> value type
+    replace_formulas: tuple = ()       # header cells whose template formula the user approved replacing
     receipt_number_style: str = "full"  # "full" -> PC001-003 ; "index" -> 3
 
     def cells_for(self, n_lines: int) -> list[str]:
@@ -64,16 +65,21 @@ def load_profile(path: Path) -> TemplateProfile:
             raise TemplateMappingError(f"Profile {path.name} is missing '{key}'")
     types: dict[str, str] = {}
     header = {}
+    replace = []
     for k, v in data["header"].items():
-        ref, typ = _parse_target(v)
+        ref, typ, rf = _parse_target(v)
         header[k], types[ref] = ref, typ
+        if rf:
+            replace.append(ref)
     unknown = set(header) - HEADER_FIELDS
     if unknown:
         raise TemplateMappingError(f"Unknown header fields in profile: {sorted(unknown)}")
     li = data["line_items"]
     columns = {}
     for k, v in li["columns"].items():
-        ref, typ = _parse_target(v)
+        ref, typ, rf = _parse_target(v)
+        if rf:
+            raise TemplateMappingError("replace_formula is only allowed on single header cells")
         columns[k], types[ref] = ref, typ
     unknown = set(columns) - LINE_FIELDS
     if unknown:
@@ -87,7 +93,8 @@ def load_profile(path: Path) -> TemplateProfile:
     if style not in ("full", "index"):
         raise TemplateMappingError("receipt_number must be 'full' or 'index'")
     profile = TemplateProfile(data["name"], template, data["sheet"], header, int(li["first_row"]),
-                              int(li["max_rows"]), columns, data.get("overflow", "refuse"), path, types, style)
+                              int(li["max_rows"]), columns, data.get("overflow", "refuse"), path, types,
+                              tuple(replace), style)
     line_cells = {f"{c}{profile.first_row + i}" for i in range(profile.max_rows) for c in columns.values()}
     clash = line_cells & set(header.values())
     if clash:

@@ -26,7 +26,7 @@ FIX = ROOT / "fixtures"
 
 
 def run(out: Path):
-    chart = {str(k): v for k, v in yaml.safe_load((FIX / "account_codes.yaml").read_text()).items()}
+    chart = FIX / "jobs" / "LK-0042_line_list.csv"   # the job's line list (fictional)
     return run_envelope(
         envelope_yaml=FIX / "envelope.yaml",
         receipts_dir=FIX / "receipts",

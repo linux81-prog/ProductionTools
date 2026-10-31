@@ -3,10 +3,10 @@
 # modified; ProductionTools fills a copy.
 #
 # Mapping notes (please confirm):
-#  - "Category" (P3) is mapped to the crew member's department. Change if your
-#    productions use Category differently.
-#  - "Envelope No" (S3) is a formula in the template ("1 of N" pages), so the
-#    app does not write there. The envelope ID (e.g. PC001) is used in file names.
+#  - "Category" (P3) is the crew member's department (confirmed by the user).
+#  - "Envelope No" (S3) normally holds a "1 of N" page-count formula. As approved by
+#    the user, the app replaces it in the filled COPY with the unique envelope ID
+#    (e.g. LK-0042-PC001). Nothing else in the workbook refers to S3.
 #  - "Line No" (F) must be a number for the template's line-number breakdown
 #    formulas to work, so account codes are written as numbers.
 #  - The receipts total, total of all envelopes and balance due are calculated by
@@ -26,6 +26,7 @@ header:
   production: I3
   production_number: M3
   department: P3
+  envelope_id: {cell: S3, type: text, replace_formula: true}
   float_amount: {cell: E48, type: money}
 
 line_items:

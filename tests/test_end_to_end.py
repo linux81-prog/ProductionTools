@@ -57,7 +57,9 @@ def test_reconciliation_flags_the_planted_problems(run):
     assert ("ERROR", "Envelope", "Cash reconciliation") in checks           # $2.00 short
     assert ("WARNING", "PC001-002", "Receipt arithmetic") in checks         # printed total $0.50 off
     assert ("INFO", "PC001-003", "Payment method") in checks                # paid by Visa
-    assert len(res.flags) == 3
+    assert ("INFO", "PC001-001", "Description") in checks                  # filled from the job line list
+    assert ("INFO", "PC001-003", "Description") in checks
+    assert not [f for f in res.flags if f.check not in ("Cash reconciliation", "Receipt arithmetic", "Payment method", "Description")]
     summary = json.loads((res.version_dir / "run_summary.json").read_text())
     assert summary["status"].startswith("READY FOR HUMAN REVIEW")
     assert summary["numbers"]["over_short"] == "-2.00"
@@ -113,8 +115,10 @@ def test_master_template_envelope(tmp_path, chart_module):
     profile = FIX / "templates" / "master_pc" / "PC_Sheet_Template.profile.yaml"
     template = FIX / "templates" / "master_pc" / "PC_Sheet_Template.xlsx"
     before = sha256_file(template)
-    res = run_envelope(FIX / "envelope.yaml", FIX / "receipts", profile, chart_module, tmp_path, FIX / "review.yaml")
+    res = run_envelope(FIX / "envelope.yaml", FIX / "receipts", profile, FIX / "jobs" / "LK-0042_line_list.csv",
+                       tmp_path, FIX / "review.yaml")
     assert res.preservation["passed"]
+    assert any("S3" in a for a in res.preservation["allowed_changes_seen"])
     assert sha256_file(template) == before
     ws = openpyxl.load_workbook(res.version_dir / "PC001_TopSheet.xlsx")["PC Formulas (1)"]
     assert [ws[f"B{r}"].value for r in (8, 9, 10)] == [1, 2, 3]
@@ -122,5 +126,9 @@ def test_master_template_envelope(tmp_path, chart_module):
     assert [ws[f"E{r}"].value for r in (8, 9, 10)] == [81.3, 94.94, 100.29]
     assert ws["E48"].value == 300 and ws["A3"].value == "Jordan Avery" and ws["E3"].value == 5550102020
     assert ws["E44"].value == '=IF(SUM(E8:E42),SUM(E8:E42),"")'
+    assert ws["S3"].value == "LK-0042-PC001"                                # unique envelope ID replaces "1 of N"
+    assert ws["D8"].value == "Art Dept - Expendables"                       # from the job line list
+    assert ws["D9"].value == "Crew coffee and pastries, prep day"           # reviewer's own text wins
+    assert ws["D10"].value == "Props - Purchases"
     txt = PdfReader(str(res.version_dir / "receipts_annotated" / EXPECTED[0])).pages[0].extract_text()
     assert "#1" in txt

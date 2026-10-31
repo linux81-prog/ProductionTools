@@ -29,6 +29,8 @@ from .mapping import load_profile
 from .models import Envelope, Receipt
 from .parse import parse_receipt
 from .review import apply_review, load_review
+from .envelope_ids import DEFAULT_FORMAT, make_envelope_id, register
+from .line_list import fill_descriptions, load_line_list
 from .template_fill import fill_topsheet, receipt_label
 
 # A provider turns the filled .xlsx into a PDF. On the Mac this will be the
@@ -57,6 +59,7 @@ def load_envelope(path: Path) -> tuple[Envelope, list[str]]:
         float_amount=Decimal(str(d["float_amount"])), cash_returned=Decimal(str(d["cash_returned"])),
         reported_total=Decimal(str(d["reported_total"])),
         per_receipt_limit=Decimal(str(d.get("per_receipt_limit", "250.00"))), crew_phone=str(d.get("crew_phone", "")))
+    env.envelope_id = str(d.get("envelope_id") or make_envelope_id(env, d.get("envelope_id_format", DEFAULT_FORMAT)))
     return env, list(d["receipts"])
 
 
@@ -66,7 +69,7 @@ def _field_json(r: Receipt) -> dict:
             for k, f in r.fields.items()}
 
 
-def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, chart: dict[str, str],
+def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, chart: dict[str, str] | Path,
                  project_dir: Path, review_path: Path | None = None,
                  topsheet_pdf_provider: TopSheetPdfProvider | None = None,
                  topsheet_pdf_label: str = "") -> RunResult:
@@ -75,6 +78,12 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
     audit = AuditLog(project_dir / "audit.log")
     store = OriginalsStore(project_dir / "originals")
     env, receipt_names = load_envelope(envelope_yaml)
+    register(project_dir, env)  # refuses an ID already used by a different envelope
+    audit.record("envelope_id", envelope_id=env.envelope_id)
+    if not isinstance(chart, dict):  # a job line list file (CSV / XLSX / YAML)
+        line_file = store.import_file(Path(chart))
+        chart = load_line_list(line_file.stored_path)
+        audit.record("line_list_loaded", file=Path(line_file.source_name).name, lines=len(chart))
     profile = load_profile(profile_path)
     known_vendors: list[str] = []
 
@@ -105,6 +114,9 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
     # 3. human review decisions
     if review_path:
         apply_review(env.receipts, load_review(review_path), audit)
+
+    # 3b. descriptions from the job's line list where the reviewer did not type one
+    fill_descriptions(env.receipts, chart, audit)
 
     # 4. numbering: by date, then by the order received
     order = sorted(range(len(env.receipts)), key=lambda i: (env.receipts[i].date or date.max, i))

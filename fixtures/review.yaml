@@ -9,14 +9,13 @@
 #   corrections: {field: {value: ..., reason: ...}}
 #   positions:   {field: {page: 0, box: [x0, y0, x1, y1], reason: ...}}   (fractions of the page, 0-1)
 #   number_position: [x0, y0, x1, y1]
-#   account_code, description
+#   account_code, description   (no description -> filled from the job's line list)
 reviewer: "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
 
 receipts:
   01_hardware_barn_photo.jpg:
     confirm: true
     account_code: "2410"
-    description: "Gaffer tape, zip ties, work gloves, sash cord for set build"
 
   02_copper_kettle_scan.pdf:
     confirm: true
@@ -29,4 +28,3 @@ receipts:
   03_prop_depot_invoice.pdf:
     confirm: true
     account_code: "2510"
-    description: "Brass ship lantern and rope coil (hero props, lighthouse set)"

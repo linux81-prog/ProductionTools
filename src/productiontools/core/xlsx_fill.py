@@ -43,6 +43,7 @@ NS_PKG_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
 ALLOWED_CHANGES = [
     ("Mapped cell values", "Only the cells listed in the template profile receive new values; each keeps its original formatting style."),
     ("workbook.xml <calcPr fullCalcOnLoad=\"1\">", "Tells Excel to recalculate every formula when the file is opened, so totals reflect the new values."),
+    ("Formula replaced in an explicitly approved cell", "Only where the template profile marks a cell replace_formula: true (e.g. the master template's Envelope No cell now shows the unique envelope ID instead of the '1 of N' formula)."),
     ("Row 'spans' hint (only if needed)", "An optional performance hint listing which columns a row uses; widened only when a mapped cell is outside it. No visual effect."),
 ]
 
@@ -209,7 +210,8 @@ def _build_cell(p: str, ref: str, old_open_tag: str | None, value: CellValue, da
             + f"><{p}is><{p}t{space}>{_xml_text(text)}</{p}t></{p}is></{p}c>")
 
 
-def set_cells(sheet_xml: str, values: dict[str, CellValue], date1904: bool = False) -> str:
+def set_cells(sheet_xml: str, values: dict[str, CellValue], date1904: bool = False,
+              replace_formulas: frozenset[str] = frozenset()) -> str:
     """Return new sheet XML with only the given cells changed."""
     merges = merged_ranges(sheet_xml)
     by_row: dict[int, dict[str, CellValue]] = {}
@@ -240,7 +242,7 @@ def set_cells(sheet_xml: str, values: dict[str, CellValue], date1904: bool = Fal
         cells_wanted = by_row[rnum]
         if rnum in row_map:
             span = row_map[rnum]
-            edits.append((span.start, span.end, _edit_row(span.text, p, cells_wanted, date1904)))
+            edits.append((span.start, span.end, _edit_row(span.text, p, cells_wanted, date1904, replace_formulas)))
         else:
             new_cells = "".join(_build_cell(p, ref, None, v, date1904)
                                 for ref, v in sorted(cells_wanted.items(), key=lambda kv: col_to_num(split_ref(kv[0])[0])))
@@ -254,7 +256,8 @@ def set_cells(sheet_xml: str, values: dict[str, CellValue], date1904: bool = Fal
     return prefix_xml + content + suffix_xml
 
 
-def _edit_row(row_xml: str, p: str, wanted: dict[str, CellValue], date1904: bool) -> str:
+def _edit_row(row_xml: str, p: str, wanted: dict[str, CellValue], date1904: bool,
+              replace_formulas: frozenset[str] = frozenset()) -> str:
     gt = row_xml.find(">")
     open_tag = row_xml[: gt + 1]
     if open_tag.endswith("/>"):
@@ -270,7 +273,7 @@ def _edit_row(row_xml: str, p: str, wanted: dict[str, CellValue], date1904: bool
     for ref, val in wanted.items():
         if ref in existing:
             span = existing[ref]
-            if re.search(rf"<{re.escape(p)}f\b", span.text):
+            if re.search(rf"<{re.escape(p)}f\b", span.text) and ref not in replace_formulas:
                 raise TemplateMappingError(f"{ref} contains a formula in the template; refusing to overwrite it.")
             old_tag = span.text[: span.text.find(">") + 1]
             edits.append((span.start, span.end, _build_cell(p, ref, old_tag, val, date1904)))
@@ -316,8 +319,14 @@ def set_full_calc_on_load(workbook_xml: str) -> str:
 
 
 # ----------------------------------------------------------------- driver --
-def fill_template_copy(template: Path, dest: Path, sheet_name: str, values: dict[str, CellValue]) -> dict:
-    """Create ``dest`` as a filled copy of ``template``. The template is only read."""
+def fill_template_copy(template: Path, dest: Path, sheet_name: str, values: dict[str, CellValue],
+                       replace_formulas=()) -> dict:
+    """Create ``dest`` as a filled copy of ``template``. The template is only read.
+
+    ``replace_formulas`` lists cells whose template formula may be replaced. Only cells
+    the template profile explicitly marks ``replace_formula: true`` are passed here.
+    """
+    replace_formulas = frozenset(c.upper() for c in replace_formulas)
     template, dest = Path(template), Path(dest)
     if dest.exists():
         raise OverwriteRefusedError(f"Refusing to overwrite existing file: {dest}")
@@ -327,7 +336,7 @@ def fill_template_copy(template: Path, dest: Path, sheet_name: str, values: dict
     with zipfile.ZipFile(template) as zin:
         sheet_part = resolve_sheet_part(zin, sheet_name)
         date1904 = workbook_uses_1904(zin)
-        new_sheet = set_cells(zin.read(sheet_part).decode("utf-8"), values, date1904)
+        new_sheet = set_cells(zin.read(sheet_part).decode("utf-8"), values, date1904, replace_formulas)
         new_wb = set_full_calc_on_load(zin.read("xl/workbook.xml").decode("utf-8"))
 
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -340,4 +349,5 @@ def fill_template_copy(template: Path, dest: Path, sheet_name: str, values: dict
                 else:
                     data = zin.read(info.filename)
                 zout.writestr(info, data, compress_type=info.compress_type)
-    return {"sheet_part": sheet_part, "cells_written": sorted(values), "date1904": date1904}
+    return {"sheet_part": sheet_part, "cells_written": sorted(values), "date1904": date1904,
+            "formulas_replaced": sorted(replace_formulas & {k.upper() for k in values})}

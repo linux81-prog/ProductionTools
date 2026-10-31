@@ -65,6 +65,9 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
             add("ERROR", n, "Account code", "No account code assigned.", "Choose an account code.")
         elif chart and r.account_code not in chart:
             add("ERROR", n, "Account code", f"Code {r.account_code} is not in the chart of accounts.", "Correct the code.")
+        if r.description and r.description_source == "job line list":
+            add("INFO", n, "Description", f"Filled from the job's line list for line {r.account_code}: \"{r.description}\".",
+                "Edit on the review screen if a more specific description is wanted.")
         if not r.description:
             add("WARNING", n, "Description", "No description entered.", "Describe what was purchased and why.")
         pay = r.val("payment")
