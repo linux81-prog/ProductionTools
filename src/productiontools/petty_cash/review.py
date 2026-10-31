@@ -16,8 +16,10 @@ import yaml
 
 from ..core.audit import AuditLog
 from .models import Box, FieldValue, Receipt
+from .parse import resolve_total
 
-MONEY_FIELDS = {"subtotal", "tax", "total", "other_charges"}
+MONEY_FIELDS = {"subtotal", "tax", "total", "other_charges", "printed_total", "tip", "final_total"}
+TIP_INPUTS = {"printed_total", "tip", "final_total"}
 
 
 def _coerce(field: str, value):
@@ -53,6 +55,13 @@ def apply_review(receipts: list[Receipt], review: dict, audit: AuditLog) -> None
                      "reason": change.get("reason", "")}
             r.overrides.append({**entry, "kind": "value correction"})
             audit.record("field_corrected", actor=reviewer, **entry)
+        corrected = set((d.get("corrections") or {}))
+        if corrected & TIP_INPUTS and "total" not in corrected:
+            old_total = r.total
+            r.fields["total"] = resolve_total(r.fields)
+            if r.fields["total"].value != old_total:
+                audit.record("total_recalculated", actor="system", receipt=r.source_name, old=str(old_total),
+                             new=str(r.fields["total"].value), reason="tip / final total corrected by reviewer")
         for field, pos in (d.get("positions") or {}).items():
             page = int(pos.get("page", 0))
             img = r.pages[page].image
@@ -77,6 +86,9 @@ def apply_review(receipts: list[Receipt], review: dict, audit: AuditLog) -> None
             for f in r.fields.values():
                 if f.value is not None:
                     f.verified = True
+            if r.fields.get("total") and r.fields["total"].tip_status == "proposed":
+                audit.record("proposed_total_confirmed", actor=reviewer, receipt=r.source_name,
+                             value=str(r.total), note="final total was blank on the receipt; reviewer accepted printed total + tip")
             r.verified_by = reviewer
             audit.record("receipt_verified", actor=reviewer, receipt=r.source_name,
                          note=d.get("note", "all extracted fields checked against the receipt image"))

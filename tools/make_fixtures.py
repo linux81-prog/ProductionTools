@@ -453,14 +453,15 @@ department: Art
 position: Art Department Coordinator
 period_start: 2026-10-12
 period_end: 2026-10-18
-float_amount: "300.00"
-reported_total: "276.53"   # what the crew member wrote on the envelope
-cash_returned: "21.47"     # cash handed back (deliberately $2.00 short for the demo)
+float_amount: "400.00"
+reported_total: "331.52"   # what the crew member wrote on the envelope
+cash_returned: "66.48"     # cash handed back (deliberately $2.00 short for the demo)
 per_receipt_limit: "250.00"
 receipts:
   - 01_hardware_barn_photo.jpg
   - 02_copper_kettle_scan.pdf
   - 03_prop_depot_invoice.pdf
+  - 04_harbor_light_diner_photo.jpg   # card slip with a (simulated) handwritten tip and final total
 """
 
 
@@ -468,6 +469,8 @@ def main():
     (FIX / "receipts").mkdir(parents=True, exist_ok=True)
     (FIX / "templates").mkdir(parents=True, exist_ok=True)
     keys = dict([receipt_1(), receipt_2(), receipt_3()])
+    import make_tip_fixtures  # restaurant receipt with simulated handwritten tip (+ tip edge cases)
+    keys.update(make_tip_fixtures.main())
     (FIX / "answer_keys.json").write_text(json.dumps(keys, indent=2) + "\n")
     make_template(FIX / "templates" / "bluebird_lane_topsheet.xlsx")
     (FIX / "templates" / "bluebird_lane_topsheet.profile.yaml").write_text(PROFILE)

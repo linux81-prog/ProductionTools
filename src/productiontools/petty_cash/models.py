@@ -78,6 +78,7 @@ class FieldValue:
     source: str = "ocr"         # "ocr", "pdf-text", "reviewer"
     verified: bool = False
     note: str = ""
+    tip_status: str = ""        # for "total": none / verified / mismatch / proposed / implied
 
     @property
     def needs_review(self) -> bool:

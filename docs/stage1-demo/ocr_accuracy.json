@@ -1,8 +1,8 @@
 {
   "demo": {
-    "receipts": 3,
-    "field_checks": 18,
-    "correct": 18,
+    "receipts": 4,
+    "field_checks": 27,
+    "correct": 27,
     "accuracy": 1.0,
     "wrong": 0,
     "missing": 0,
@@ -10,40 +10,67 @@
     "review_threshold": 0.8,
     "per_field": {
       "vendor": {
-        "correct": 3,
+        "correct": 4,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 4
       },
       "date": {
-        "correct": 3,
+        "correct": 4,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 4
       },
       "subtotal": {
-        "correct": 3,
+        "correct": 4,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 4
       },
       "tax": {
-        "correct": 3,
+        "correct": 4,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 4
       },
       "total": {
-        "correct": 3,
+        "correct": 4,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 4
       },
       "payment": {
-        "correct": 3,
+        "correct": 4,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 4
+      },
+      "printed_total": {
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 1
+      },
+      "tip": {
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 1
+      },
+      "final_total": {
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 1
       }
     },
     "rows": [
@@ -190,6 +217,75 @@
             "flagged_for_review": false
           }
         }
+      },
+      {
+        "file": "04_harbor_light_diner_photo.jpg",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Harbor Light Diner",
+            "got": "Harbor Light Diner",
+            "status": "correct",
+            "confidence": 0.845,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-17",
+            "got": "2026-10-17",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "42.00",
+            "got": "42.00",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "3.99",
+            "got": "3.99",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "54.99",
+            "got": "54.99",
+            "status": "correct",
+            "confidence": 0.75,
+            "flagged_for_review": true
+          },
+          "payment": {
+            "expected": "Mastercard",
+            "got": "Mastercard",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          },
+          "printed_total": {
+            "expected": "45.99",
+            "got": "45.99",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "tip": {
+            "expected": "9.00",
+            "got": "9.00",
+            "status": "correct",
+            "confidence": 0.75,
+            "flagged_for_review": true
+          },
+          "final_total": {
+            "expected": "54.99",
+            "got": "54.99",
+            "status": "correct",
+            "confidence": 0.75,
+            "flagged_for_review": true
+          }
+        }
       }
     ]
   },
@@ -207,37 +303,43 @@
         "correct": 11,
         "wrong": 1,
         "missing": 0,
-        "wrong_but_flagged": 1
+        "wrong_but_flagged": 1,
+        "checked": 12
       },
       "date": {
         "correct": 12,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 12
       },
       "subtotal": {
         "correct": 11,
         "wrong": 0,
         "missing": 1,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 12
       },
       "tax": {
         "correct": 11,
         "wrong": 1,
         "missing": 0,
-        "wrong_but_flagged": 1
+        "wrong_but_flagged": 1,
+        "checked": 12
       },
       "total": {
         "correct": 11,
         "wrong": 0,
         "missing": 1,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 12
       },
       "payment": {
         "correct": 12,
         "wrong": 0,
         "missing": 0,
-        "wrong_but_flagged": 0
+        "wrong_but_flagged": 0,
+        "checked": 12
       }
     },
     "rows": [
@@ -814,6 +916,290 @@
             "status": "correct",
             "confidence": 0.9,
             "flagged_for_review": false
+          }
+        }
+      }
+    ]
+  },
+  "tips": {
+    "receipts": 3,
+    "field_checks": 27,
+    "correct": 27,
+    "accuracy": 1.0,
+    "wrong": 0,
+    "missing": 0,
+    "wrong_and_NOT_flagged": 0,
+    "review_threshold": 0.8,
+    "per_field": {
+      "vendor": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "date": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "subtotal": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "tax": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "total": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "payment": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "printed_total": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "tip": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      },
+      "final_total": {
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "wrong_but_flagged": 0,
+        "checked": 3
+      }
+    },
+    "rows": [
+      {
+        "file": "tip_no_final.jpg",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Harbor Light Diner",
+            "got": "Harbor Light Diner",
+            "status": "correct",
+            "confidence": 0.82,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-17",
+            "got": "2026-10-17",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "42.00",
+            "got": "42.00",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "3.99",
+            "got": "3.99",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "53.99",
+            "got": "53.99",
+            "status": "correct",
+            "confidence": 0.6,
+            "flagged_for_review": true
+          },
+          "payment": {
+            "expected": "Mastercard",
+            "got": "Mastercard",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          },
+          "printed_total": {
+            "expected": "45.99",
+            "got": "45.99",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "tip": {
+            "expected": "8.00",
+            "got": "8.00",
+            "status": "correct",
+            "confidence": 0.75,
+            "flagged_for_review": true
+          },
+          "final_total": {
+            "expected": null,
+            "got": null,
+            "status": "correct",
+            "confidence": 0.0,
+            "flagged_for_review": true
+          }
+        }
+      },
+      {
+        "file": "tip_mismatch.jpg",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Harbor Light Diner",
+            "got": "Harbor Light Diner",
+            "status": "correct",
+            "confidence": 0.82,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-17",
+            "got": "2026-10-17",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "42.00",
+            "got": "42.00",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "3.99",
+            "got": "3.99",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "55.99",
+            "got": "55.99",
+            "status": "correct",
+            "confidence": 0.5,
+            "flagged_for_review": true
+          },
+          "payment": {
+            "expected": "Mastercard",
+            "got": "Mastercard",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          },
+          "printed_total": {
+            "expected": "45.99",
+            "got": "45.99",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "tip": {
+            "expected": "9.00",
+            "got": "9.00",
+            "status": "correct",
+            "confidence": 0.75,
+            "flagged_for_review": true
+          },
+          "final_total": {
+            "expected": "55.99",
+            "got": "55.99",
+            "status": "correct",
+            "confidence": 0.75,
+            "flagged_for_review": true
+          }
+        }
+      },
+      {
+        "file": "suggested_only.jpg",
+        "condition": "",
+        "fields": {
+          "vendor": {
+            "expected": "Harbor Light Diner",
+            "got": "Harbor Light Diner",
+            "status": "correct",
+            "confidence": 0.82,
+            "flagged_for_review": false
+          },
+          "date": {
+            "expected": "2026-10-17",
+            "got": "2026-10-17",
+            "status": "correct",
+            "confidence": 0.85,
+            "flagged_for_review": false
+          },
+          "subtotal": {
+            "expected": "42.00",
+            "got": "42.00",
+            "status": "correct",
+            "confidence": 0.95,
+            "flagged_for_review": false
+          },
+          "tax": {
+            "expected": "3.99",
+            "got": "3.99",
+            "status": "correct",
+            "confidence": 0.92,
+            "flagged_for_review": false
+          },
+          "total": {
+            "expected": "45.99",
+            "got": "45.99",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "payment": {
+            "expected": "Mastercard",
+            "got": "Mastercard",
+            "status": "correct",
+            "confidence": 0.9,
+            "flagged_for_review": false
+          },
+          "printed_total": {
+            "expected": "45.99",
+            "got": "45.99",
+            "status": "correct",
+            "confidence": 0.97,
+            "flagged_for_review": false
+          },
+          "tip": {
+            "expected": null,
+            "got": null,
+            "status": "correct",
+            "confidence": 0.0,
+            "flagged_for_review": true
+          },
+          "final_total": {
+            "expected": null,
+            "got": null,
+            "status": "correct",
+            "confidence": 0.0,
+            "flagged_for_review": true
           }
         }
       }

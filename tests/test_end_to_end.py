@@ -13,7 +13,8 @@ from productiontools.petty_cash.pipeline import run_envelope
 
 EXPECTED = ["PC001-001_2026-10-14_Hardware-Barn_81.30.pdf",
             "PC001-002_2026-10-15_Copper-Kettle-Cafe_94.94.pdf",
-            "PC001-003_2026-10-16_Prop-Depot-Supply-Co_100.29.pdf"]
+            "PC001-003_2026-10-16_Prop-Depot-Supply-Co_100.29.pdf",
+            "PC001-004_2026-10-17_Harbor-Light-Diner_54.99.pdf"]
 
 
 @pytest.fixture(scope="module")
@@ -38,16 +39,16 @@ def test_all_outputs_exist_with_consistent_names(run):
     for name in ["PC001_TopSheet.xlsx", "PC001_TopSheet.pdf", "PC001_Combined_Annotated.pdf", "PC001_Combined_Clean.pdf",
                  "PC001_Reconciliation_Report.pdf", "PC001_Reconciliation_Report.xlsx", "run_summary.json"]:
         assert (v / name).exists(), name
-    assert len(list((v / "review_previews").iterdir())) == 3
+    assert len(list((v / "review_previews").iterdir())) == 4
 
 
 def test_combined_pdf_order_and_bookmarks(run):
     res, _, _ = run
     r = PdfReader(str(res.version_dir / "PC001_Combined_Annotated.pdf"))
-    assert len(r.pages) == 4  # top sheet + 3 receipts
+    assert len(r.pages) == 5  # top sheet + 4 receipts
     titles = [o.title for o in r.outline]
     assert titles[0] == "PC001 Top Sheet"
-    assert [t.split()[0] for t in titles[1:]] == ["PC001-001", "PC001-002", "PC001-003"]
+    assert [t.split()[0] for t in titles[1:]] == ["PC001-001", "PC001-002", "PC001-003", "PC001-004"]
     assert "TOP SHEET PDF PENDING" in r.pages[0].extract_text()  # manual fallback when Excel is unavailable
 
 
@@ -59,10 +60,15 @@ def test_reconciliation_flags_the_planted_problems(run):
     assert ("INFO", "PC001-003", "Payment method") in checks                # paid by Visa
     assert ("INFO", "PC001-001", "Description") in checks                  # filled from the job line list
     assert ("INFO", "PC001-003", "Description") in checks
-    assert not [f for f in res.flags if f.check not in ("Cash reconciliation", "Receipt arithmetic", "Payment method", "Description")]
+    assert ("INFO", "PC001-004", "Tip paid by card") in checks             # handwritten tip, charged to the card
+    assert ("INFO", "PC001-004", "Suggested gratuity") in checks           # suggested amounts not counted
+    allowed = ("Cash reconciliation", "Receipt arithmetic", "Payment method", "Description", "Tip paid by card",
+               "Suggested gratuity")
+    assert not [f for f in res.flags if f.check not in allowed]
     summary = json.loads((res.version_dir / "run_summary.json").read_text())
     assert summary["status"].startswith("READY FOR HUMAN REVIEW")
     assert summary["numbers"]["over_short"] == "-2.00"
+    assert summary["numbers"]["receipts_total"] == "331.52"
 
 
 def test_topsheet_values_and_preservation(run):
@@ -70,9 +76,9 @@ def test_topsheet_values_and_preservation(run):
     res, _, _ = run
     assert res.preservation["passed"]
     ws = openpyxl.load_workbook(res.version_dir / "PC001_TopSheet.xlsx")["Top Sheet"]
-    assert [ws[f"A{r}"].value for r in (10, 11, 12)] == ["PC001-001", "PC001-002", "PC001-003"]
-    assert [ws[f"G{r}"].value for r in (10, 11, 12)] == [81.3, 94.94, 100.29]
-    assert ws["G28"].value == 21.47 and ws["G25"].value == "=SUM(G10:G24)"
+    assert [ws[f"A{r}"].value for r in (10, 11, 12, 13)] == ["PC001-001", "PC001-002", "PC001-003", "PC001-004"]
+    assert [ws[f"G{r}"].value for r in (10, 11, 12, 13)] == [81.3, 94.94, 100.29, 54.99]  # confirmed final incl. tip
+    assert ws["G28"].value == 66.48 and ws["G25"].value == "=SUM(G10:G24)"
 
 
 def test_originals_preserved_and_locked(run):
@@ -106,7 +112,7 @@ def test_second_run_creates_new_version_without_overwriting(run, chart_module):
     res2 = run_envelope(FIX / "envelope.yaml", FIX / "receipts", PROFILE, chart_module, project, FIX / "review.yaml")
     assert res2.version_dir.name == "v2"
     assert all(p.read_bytes() == b for p, b in first.items())
-    assert len([l for l in (project / "originals" / "manifest.jsonl").read_text().splitlines() if l]) == 3
+    assert len([l for l in (project / "originals" / "manifest.jsonl").read_text().splitlines() if l]) == 4  # no duplicates on re-run
 
 
 def test_master_template_envelope(tmp_path, chart_module):
@@ -121,10 +127,10 @@ def test_master_template_envelope(tmp_path, chart_module):
     assert any("S3" in a for a in res.preservation["allowed_changes_seen"])
     assert sha256_file(template) == before
     ws = openpyxl.load_workbook(res.version_dir / "PC001_TopSheet.xlsx")["PC Formulas (1)"]
-    assert [ws[f"B{r}"].value for r in (8, 9, 10)] == [1, 2, 3]
-    assert [ws[f"F{r}"].value for r in (8, 9, 10)] == [2410, 3510, 2510]   # numbers, so the breakdown formulas work
-    assert [ws[f"E{r}"].value for r in (8, 9, 10)] == [81.3, 94.94, 100.29]
-    assert ws["E48"].value == 300 and ws["A3"].value == "Jordan Avery" and ws["E3"].value == 5550102020
+    assert [ws[f"B{r}"].value for r in (8, 9, 10, 11)] == [1, 2, 3, 4]
+    assert [ws[f"F{r}"].value for r in (8, 9, 10, 11)] == [2410, 3510, 2510, 3520]   # numbers, so the breakdown formulas work
+    assert [ws[f"E{r}"].value for r in (8, 9, 10, 11)] == [81.3, 94.94, 100.29, 54.99]
+    assert ws["E48"].value == 400 and ws["A3"].value == "Jordan Avery" and ws["E3"].value == 5550102020
     assert ws["E44"].value == '=IF(SUM(E8:E42),SUM(E8:E42),"")'
     assert ws["S3"].value == "LK-0042-PC001"                                # unique envelope ID replaces "1 of N"
     assert ws["D8"].value == "Art Dept - Expendables"                       # from the job line list

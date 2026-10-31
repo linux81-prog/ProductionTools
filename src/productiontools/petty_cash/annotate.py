@@ -143,7 +143,13 @@ def number_already_present(page: Page, label: str) -> bool:
 
 def plan_marks(page: Page, receipt: Receipt, pl_scale: float) -> MarkPlan:
     circles, skipped = [], {}
-    for key in CIRCLED_FIELDS:
+    fields_to_circle = list(CIRCLED_FIELDS)
+    t = receipt.fields.get("total")
+    if t is not None and t.box is None and getattr(t, "tip_status", "") == "proposed":
+        # Final total is blank on the receipt: circle the printed total and the tip that appear,
+        # never write the calculated amount onto the receipt.
+        fields_to_circle = ["vendor", "date", "printed_total", "tip"]
+    for key in fields_to_circle:
         f = receipt.fields.get(key)
         if not f or f.box is None or f.page != page.index:
             if page.index == len(receipt.pages) - 1 and (not f or f.box is None):

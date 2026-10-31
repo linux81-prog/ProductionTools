@@ -12,12 +12,13 @@ from .models import REVIEW_THRESHOLD
 from .parse import parse_receipt
 
 FIELDS = ("vendor", "date", "subtotal", "tax", "total", "payment")
+TIP_FIELDS = ("printed_total", "tip", "final_total")
 
 
 def _norm(field: str, v) -> str | None:
     if v is None:
         return None
-    if field in ("subtotal", "tax", "total"):
+    if field in ("subtotal", "tax", "total", "printed_total", "tip", "final_total"):
         return str(Decimal(str(v)).quantize(Decimal("0.01")))
     if field == "vendor":
         return re.sub(r"[^a-z0-9]", "", str(v).lower())
@@ -26,12 +27,17 @@ def _norm(field: str, v) -> str | None:
 
 def evaluate(receipts_dir: Path, keys_path: Path) -> dict:
     keys = json.loads(Path(keys_path).read_text())
-    rows, per_field = [], {f: {"correct": 0, "wrong": 0, "missing": 0, "wrong_but_flagged": 0} for f in FIELDS}
+    rows = []
+    all_fields = FIELDS + tuple(f for f in TIP_FIELDS if any(f in k for k in keys.values()))
+    per_field = {f: {"correct": 0, "wrong": 0, "missing": 0, "wrong_but_flagged": 0, "checked": 0} for f in all_fields}
     for name, key in keys.items():
         pages = load_pages(Path(receipts_dir) / name)
         fields = parse_receipt(pages)
         row = {"file": name, "condition": key.get("condition", ""), "fields": {}}
-        for f in FIELDS:
+        for f in all_fields:
+            if f not in key:
+                continue
+            per_field[f]["checked"] += 1
             got = fields[f].value if f in fields else None
             ok = _norm(f, got) == _norm(f, key[f])
             flagged = fields[f].needs_review if f in fields else True
@@ -43,7 +49,7 @@ def evaluate(receipts_dir: Path, keys_path: Path) -> dict:
                                 "confidence": fields[f].confidence if f in fields else 0.0, "flagged_for_review": flagged}
         rows.append(row)
     n = len(keys)
-    total_checks = n * len(FIELDS)
+    total_checks = sum(v["checked"] for v in per_field.values())
     correct = sum(v["correct"] for v in per_field.values())
     wrong = sum(v["wrong"] for v in per_field.values())
     silent = sum(v["wrong"] - v["wrong_but_flagged"] for v in per_field.values())

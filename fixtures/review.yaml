@@ -28,3 +28,10 @@ receipts:
   03_prop_depot_invoice.pdf:
     confirm: true
     account_code: "2510"
+
+  04_harbor_light_diner_photo.jpg:
+    confirm: true
+    account_code: "3520"
+    note: >-
+      Handwritten tip $9.00 and final total $54.99 checked against the image
+      (45.99 + 9.00 = 54.99). Tip was added to the card charge.

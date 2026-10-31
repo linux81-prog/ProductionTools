@@ -22,5 +22,17 @@
     "tax": "7.84",
     "total": "100.29",
     "payment": "Visa"
+  },
+  "04_harbor_light_diner_photo.jpg": {
+    "vendor": "Harbor Light Diner",
+    "date": "2026-10-17",
+    "subtotal": "42.00",
+    "tax": "3.99",
+    "printed_total": "45.99",
+    "tip": "9.00",
+    "final_total": "54.99",
+    "total": "54.99",
+    "payment": "Mastercard",
+    "tip_status": "verified"
   }
 }

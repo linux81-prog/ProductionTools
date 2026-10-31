@@ -56,8 +56,45 @@ Standing rules apply throughout:
 - Later: the browser app will offer the job's line numbers as a pick-list, and Budget
   Conversion / the PO module will share the same list.
 
+## 1d. Handwritten tips and gratuities
+Each receipt keeps three separate amounts:
+- **printed total**: the total printed before any tip
+- **tip**
+- **final amount paid**
+
+The **expense amount** used everywhere else is the confirmed final amount.
+
+| Situation on the receipt | What the app does |
+|---|---|
+| Suggested gratuity lines (percentages, "tip guide") | Ignored. They are **never** assumed to have been paid (noted as INFO). |
+| Tip/gratuity printed *above* the printed total | Already included in the total, so **never added again**. |
+| Tip and final total both written | Checks that printed total + tip = final total. Any difference → WARNING, and the amounts must be confirmed. |
+| Tip written, final total blank | **Proposes** printed total + tip as the final amount. Nothing is used until the user confirms it, and the confirmation is logged. |
+| Final total written, no readable tip | Works out the implied tip (final − printed) and flags it for confirmation. |
+| Nothing written | The expense amount is the printed total. |
+
+- **Handwritten amounts are never silently accepted.** Any amount in the tip/final area is
+  capped below the review threshold, so a person must always confirm it.
+- **Manual correction:** the user can correct the tip, the final total or the printed total.
+  The expense amount is then recalculated and logged. The user can also enter a tip that
+  couldn't be read.
+- **Card or cash tip:** a tip written on a card slip is treated as part of the card charge
+  and is reimbursed once, never added again. "CASH TIP" text, or a bill paid in cash, means
+  a cash tip. If it's unclear, the app asks (WARNING) so the reimbursement is right.
+- **Mode A (Create):** the confirmed final amount goes onto the top sheet.
+- **Mode B (Verify):** the top sheet's amount is compared with the receipt's confirmed final
+  amount, including any tip. A top sheet showing the printed total when a tip was paid, or the
+  other way round, is flagged.
+- **Annotations:** the confirmed final total is circled when it appears on the receipt. If the
+  final total is blank, the printed total and the tip are circled instead. No labels and no
+  calculations are ever written on the receipt.
+- **Testing limits:** Stage 1 uses *simulated* handwriting (a font drawn with random tilt,
+  size and slant in blue ink). Real handwriting varies far more, so accuracy on real receipts
+  will be lower than the test figures. That's why every handwritten amount requires confirmation.
+
 ## 2. Receipt annotations (default output)
-- **Only** circles around the vendor name, the transaction date and the final total.
+- **Only** circles around the vendor name, the transaction date and the final total (the
+  confirmed final amount paid, including any tip, when it appears on the receipt).
 - A small, unobtrusive receipt number. It matches what the top sheet's receipt-number
   column shows (for example `#3`).
 - **Nothing else is added:**

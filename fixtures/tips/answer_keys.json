@@ -1,0 +1,38 @@
+{
+  "tip_no_final.jpg": {
+    "vendor": "Harbor Light Diner",
+    "date": "2026-10-17",
+    "subtotal": "42.00",
+    "tax": "3.99",
+    "printed_total": "45.99",
+    "tip": "8.00",
+    "final_total": null,
+    "total": "53.99",
+    "payment": "Mastercard",
+    "tip_status": "proposed"
+  },
+  "tip_mismatch.jpg": {
+    "vendor": "Harbor Light Diner",
+    "date": "2026-10-17",
+    "subtotal": "42.00",
+    "tax": "3.99",
+    "printed_total": "45.99",
+    "tip": "9.00",
+    "final_total": "55.99",
+    "total": "55.99",
+    "payment": "Mastercard",
+    "tip_status": "mismatch"
+  },
+  "suggested_only.jpg": {
+    "vendor": "Harbor Light Diner",
+    "date": "2026-10-17",
+    "subtotal": "42.00",
+    "tax": "3.99",
+    "printed_total": "45.99",
+    "tip": null,
+    "final_total": null,
+    "total": "45.99",
+    "payment": "Mastercard",
+    "tip_status": "none"
+  }
+}

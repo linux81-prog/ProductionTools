@@ -44,10 +44,11 @@ def run_tests() -> tuple[str, str]:
 
 def acc_table(r: dict) -> str:
     out = ["| Field | Correct | Wrong | Not found | Wrong/missing but flagged for review |", "|---|---|---|---|---|"]
-    for f in FIELDS:
-        v = r["per_field"][f]
+    for f, v in r["per_field"].items():
+        if not v["checked"]:
+            continue
         flagged = v["wrong_but_flagged"] + v["missing"]
-        out.append(f"| {f} | {v['correct']}/{r['receipts']} | {v['wrong']} | {v['missing']} | {flagged}/{v['wrong'] + v['missing']} |")
+        out.append(f"| {f} | {v['correct']}/{v['checked']} | {v['wrong']} | {v['missing']} | {flagged}/{v['wrong'] + v['missing']} |")
     return "\n".join(out)
 
 
@@ -70,7 +71,8 @@ def main():
 
     demo_acc = evaluate(FIX / "receipts", FIX / "answer_keys.json")
     stress_acc = evaluate(FIX / "stress", FIX / "stress" / "answer_keys.json")
-    (OUT / "ocr_accuracy.json").write_text(json.dumps({"demo": demo_acc, "stress": stress_acc}, indent=2))
+    tip_acc = evaluate(FIX / "tips", FIX / "tips" / "answer_keys.json")
+    (OUT / "ocr_accuracy.json").write_text(json.dumps({"demo": demo_acc, "stress": stress_acc, "tips": tip_acc}, indent=2))
     test_summary, test_lines = run_tests()
 
     pres = res.preservation
@@ -128,11 +130,28 @@ connection would make the suite fail.
 "Correct" means the extracted value exactly matches the answer key (amounts to the cent,
 dates to the day, vendor names ignoring capitalisation and punctuation).
 
-### 2a. The three demo receipts (phone photo, scanned PDF, emailed invoice)
+### 2a. The four demo receipts (phone photo, scanned PDF, emailed invoice, diner card slip with handwritten tip)
 
 **{demo_acc['correct']}/{demo_acc['field_checks']} fields correct ({demo_acc['accuracy']:.0%}).**
 
 {acc_table(demo_acc)}
+
+### 2a-2. Handwritten tips (simulated handwriting): demo diner receipt plus 3 tip cases
+
+| File | Tip written | Final written | Result |
+|---|---|---|---|
+| 04_harbor_light_diner_photo.jpg | $9.00 | $54.99 | printed + tip = final, check passed; still requires confirmation |
+| tip_no_final.jpg | $8.00 | blank | proposed $53.99, requires confirmation |
+| tip_mismatch.jpg | $9.00 | $55.99 | flagged: $1.00 difference |
+| suggested_only.jpg | none | blank | printed total $45.99 used; suggested amounts ignored |
+
+Tip-case fields read correctly: **{tip_acc['correct']}/{tip_acc['field_checks']}**; wrong values not flagged: {tip_acc['wrong_and_NOT_flagged']}.
+
+{acc_table(tip_acc)}
+
+*Honest caveat:* this "handwriting" is simulated with a computer font, so it is much neater than
+real handwriting. Expect real handwritten tips to be misread more often. That's why every
+handwritten amount is always sent to you to confirm.
 
 ### 2b. Stress set: 12 harder fictional phone photos
 
@@ -191,9 +210,10 @@ to workbook.xml.
 |---|---|---|---|
 {flags}
 
-All three were planted on purpose in the fictional data: the crew member returned $2.00
+The problems were planted on purpose in the fictional data: the crew member returned $2.00
 too little, the café receipt's printed total is $0.50 more than subtotal + tax, and the
-invoice was paid by card.
+invoice was paid by card. The diner receipt shows a handwritten $9.00 tip added to the card
+charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction
 
@@ -247,7 +267,7 @@ and the visual editor arrives in Stage 3.
 
 | File | What it is |
 |---|---|
-| `receipts_annotated/` | The three receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#3); nothing else added |
+| `receipts_annotated/` | The four receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#4); nothing else added |
 | `receipts_clean/` | The same receipts with no marks |
 | `review_previews/` | The machine's own circles before review (dashed = not yet confirmed); a review aid, not a deliverable |
 | `PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |

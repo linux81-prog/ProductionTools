@@ -49,11 +49,14 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
         if not r.verified_by:
             add("ERROR", n, "Not verified", "No person has verified this receipt.", "Review and confirm the receipt.")
 
-        sub, tax, tot, oth = (r.val("subtotal"), r.val("tax"), r.total, r.val("other_charges") or ZERO)
-        if sub is not None and tax is not None and tot is not None and sub + tax + oth != tot:
+        tot = r.total
+        sub, tax, oth = r.val("subtotal"), r.val("tax"), r.val("other_charges") or ZERO
+        printed = r.val("printed_total") if r.val("printed_total") is not None else tot
+        _tip_flags(r, n, add)
+        if sub is not None and tax is not None and printed is not None and sub + tax + oth != printed:
             extra = f" + other charges ${oth}" if oth else ""
             add("WARNING", n, "Receipt arithmetic", f"Subtotal ${sub} + tax ${tax}{extra} = ${sub + tax + oth}, "
-                f"but the receipt's printed total is ${tot} (difference ${tot - (sub + tax + oth)}).",
+                f"but the receipt's printed total is ${printed} (difference ${printed - (sub + tax + oth)}).",
                 "Confirm the amount actually paid; the vendor may have mis-totalled. Attach a note if reimbursing the printed total.")
         if r.date and not (env.period_start <= r.date <= env.period_end):
             add("WARNING", n, "Date outside period", f"Receipt date {r.date:%m/%d/%Y} is outside "
@@ -104,6 +107,43 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
     order = {"ERROR": 0, "WARNING": 1, "INFO": 2}
     flags.sort(key=lambda f: (order[f.severity], f.scope != "Envelope", f.scope))
     return flags
+
+
+def _tip_flags(r, n, add) -> None:
+    t = r.fields.get("total")
+    status = getattr(t, "tip_status", "") if t else ""
+    tip, fin, printed = r.val("tip"), r.val("final_total"), r.val("printed_total")
+    for key, label in (("tip", "Tip"), ("final_total", "Final total")):
+        f = r.fields.get(key)
+        if f and f.value is not None and not f.verified:
+            add("WARNING", n, "Handwritten amount", f"{label} ${f.value} is in the handwritten area (confidence {f.confidence:.0%}).",
+                "Check against the receipt image and confirm or correct it.")
+    if status == "mismatch":
+        add("WARNING", n, "Tip arithmetic", f"Printed total ${printed} + tip ${tip} = ${printed + tip}, but the written final total "
+            f"is ${fin} (difference ${fin - (printed + tip)}).", "Decide which amount was actually paid and correct the receipt entry.")
+    elif status == "proposed":
+        if t.verified:
+            add("INFO", n, "Proposed final amount", f"Final total was blank; printed ${printed} + tip ${tip} = ${t.value} was confirmed on review.",
+                "Recorded in the audit log.")
+        else:
+            add("WARNING", n, "Proposed final amount", f"Final total is blank. Proposed: printed ${printed} + tip ${tip} = ${t.value}.",
+                "Confirm the proposed amount before it is used.")
+    elif status == "implied":
+        add("WARNING", n, "Implied tip", f"Final total ${fin} is written but no tip amount could be read (implied tip ${fin - printed}).",
+            "Confirm the tip and final amount.")
+    if tip is not None or status in ("proposed", "implied", "mismatch", "verified"):
+        method = r.val("tip_method")
+        if method == "card":
+            add("INFO", n, "Tip paid by card", f"Tip ${tip if tip is not None else (fin - printed)} is included in the card charge of ${r.total}.",
+                "Reimburse the card charge once; do not add the tip again.")
+        elif method == "cash":
+            add("INFO", n, "Tip paid in cash", f"Tip paid in cash; expense amount ${r.total} includes it.",
+                "Confirm the cash tip was paid from petty cash / personally.")
+        else:
+            add("WARNING", n, "Tip payment method", "Could not tell whether the tip was paid by card or in cash.",
+                "Ask the crew member so the reimbursement is correct.")
+    if r.val("suggested_tip"):
+        add("INFO", n, "Suggested gratuity", "Receipt shows suggested tip amounts; these were NOT counted.", "No action needed.")
 
 
 def summary_numbers(env: Envelope) -> dict:

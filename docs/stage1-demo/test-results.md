@@ -1,10 +1,10 @@
 # Stage 1 — Test Results and Demo Report
 
-Generated 2026-10-31 20:35 in the cloud development environment. **All data is fictional.**
+Generated 2026-10-31 20:51 in the cloud development environment. **All data is fictional.**
 
 ## 1. Automated tests
 
-**Result: 52 passed, 1 warning in 59.61s**
+**Result: 59 passed, 1 warning in 65.17s (0:01:05)**
 
 Every test runs with the app-level network lock installed, so any accidental outbound
 connection would make the suite fail.
@@ -64,6 +64,13 @@ tests/test_template_preservation.py::test_checker_catches_an_unmapped_change PAS
 tests/test_template_preservation.py::test_checker_catches_a_dropped_image PASSED
 tests/test_template_preservation.py::test_profile_loads_and_matches_template PASSED
 tests/test_template_preservation.py::test_master_template_preserved PASSED
+tests/test_tips.py::test_tip_and_final_written_and_consistent PASSED
+tests/test_tips.py::test_tip_without_final_proposes_amount_needing_confirmation PASSED
+tests/test_tips.py::test_mismatch_is_flagged PASSED
+tests/test_tips.py::test_suggested_gratuity_is_never_counted PASSED
+tests/test_tips.py::test_reviewer_corrects_unreadable_tip_and_total_is_recalculated PASSED
+tests/test_tips.py::test_confirming_a_proposed_total_is_logged PASSED
+tests/test_tips.py::test_tip_above_printed_total_is_not_added_twice PASSED
 ```
 </details>
 
@@ -72,9 +79,32 @@ tests/test_template_preservation.py::test_master_template_preserved PASSED
 "Correct" means the extracted value exactly matches the answer key (amounts to the cent,
 dates to the day, vendor names ignoring capitalisation and punctuation).
 
-### 2a. The three demo receipts (phone photo, scanned PDF, emailed invoice)
+### 2a. The four demo receipts (phone photo, scanned PDF, emailed invoice, diner card slip with handwritten tip)
 
-**18/18 fields correct (100%).**
+**27/27 fields correct (100%).**
+
+| Field | Correct | Wrong | Not found | Wrong/missing but flagged for review |
+|---|---|---|---|---|
+| vendor | 4/4 | 0 | 0 | 0/0 |
+| date | 4/4 | 0 | 0 | 0/0 |
+| subtotal | 4/4 | 0 | 0 | 0/0 |
+| tax | 4/4 | 0 | 0 | 0/0 |
+| total | 4/4 | 0 | 0 | 0/0 |
+| payment | 4/4 | 0 | 0 | 0/0 |
+| printed_total | 1/1 | 0 | 0 | 0/0 |
+| tip | 1/1 | 0 | 0 | 0/0 |
+| final_total | 1/1 | 0 | 0 | 0/0 |
+
+### 2a-2. Handwritten tips (simulated handwriting): demo diner receipt plus 3 tip cases
+
+| File | Tip written | Final written | Result |
+|---|---|---|---|
+| 04_harbor_light_diner_photo.jpg | $9.00 | $54.99 | printed + tip = final, check passed; still requires confirmation |
+| tip_no_final.jpg | $8.00 | blank | proposed $53.99, requires confirmation |
+| tip_mismatch.jpg | $9.00 | $55.99 | flagged: $1.00 difference |
+| suggested_only.jpg | none | blank | printed total $45.99 used; suggested amounts ignored |
+
+Tip-case fields read correctly: **27/27**; wrong values not flagged: 0.
 
 | Field | Correct | Wrong | Not found | Wrong/missing but flagged for review |
 |---|---|---|---|---|
@@ -84,6 +114,13 @@ dates to the day, vendor names ignoring capitalisation and punctuation).
 | tax | 3/3 | 0 | 0 | 0/0 |
 | total | 3/3 | 0 | 0 | 0/0 |
 | payment | 3/3 | 0 | 0 | 0/0 |
+| printed_total | 3/3 | 0 | 0 | 0/0 |
+| tip | 3/3 | 0 | 0 | 0/0 |
+| final_total | 3/3 | 0 | 0 | 0/0 |
+
+*Honest caveat:* this "handwriting" is simulated with a computer font, so it is much neater than
+real handwriting. Expect real handwritten tips to be misread more often. That's why every
+handwritten amount is always sent to you to confirm.
 
 ### 2b. Stress set: 12 harder fictional phone photos
 
@@ -174,21 +211,27 @@ to workbook.xml.
 
 | Severity | Scope | Check | Finding |
 |---|---|---|---|
-| ERROR | Envelope | Cash reconciliation | Float $300.00 − receipts $276.53 = $23.47 expected back; $21.47 returned. SHORT by $2.00. |
+| ERROR | Envelope | Cash reconciliation | Float $400.00 − receipts $331.52 = $68.48 expected back; $66.48 returned. SHORT by $2.00. |
 | WARNING | PC001-002 | Receipt arithmetic | Subtotal $86.25 + tax $8.19 = $94.44, but the receipt's printed total is $94.94 (difference $0.50). |
 | INFO | PC001-001 | Description | Filled from the job's line list for line 2410: "Art Dept - Expendables". |
 | INFO | PC001-003 | Description | Filled from the job's line list for line 2510: "Props - Purchases". |
 | INFO | PC001-003 | Payment method | Receipt shows payment by Visa, not cash. |
+| INFO | PC001-004 | Tip paid by card | Tip $9.00 is included in the card charge of $54.99. |
+| INFO | PC001-004 | Suggested gratuity | Receipt shows suggested tip amounts; these were NOT counted. |
+| INFO | PC001-004 | Description | Filled from the job's line list for line 3520: "Catering / Meals". |
+| INFO | PC001-004 | Payment method | Receipt shows payment by Mastercard, not cash. |
 
-All three were planted on purpose in the fictional data: the crew member returned $2.00
+The problems were planted on purpose in the fictional data: the crew member returned $2.00
 too little, the café receipt's printed total is $0.50 more than subtotal + tax, and the
-invoice was paid by card.
+invoice was paid by card. The diner receipt shows a handwritten $9.00 tip added to the card
+charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction
 
 **Fields the machine flagged for review before any person looked** (shown with dashed circles in
 `review_previews/`):
 - `02_copper_kettle_scan.pdf`: **total** = 94.94 (confidence 72%) — subtotal 86.25 + tax 8.19 = 94.44, not 94.94 (cross-check failed)
+- `04_harbor_light_diner_photo.jpg`: **total** = 54.99 (confidence 75%) — printed 45.99 + tip 9.00 = final 54.99 (check passed)
 
 **Manual corrections the reviewer had to make on the demo receipts: 0.** All vendor, date, total, subtotal, tax and payment values were read correctly.
 
@@ -236,7 +279,7 @@ and the visual editor arrives in Stage 3.
 
 | File | What it is |
 |---|---|
-| `receipts_annotated/` | The three receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#3); nothing else added |
+| `receipts_annotated/` | The four receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#4); nothing else added |
 | `receipts_clean/` | The same receipts with no marks |
 | `review_previews/` | The machine's own circles before review (dashed = not yet confirmed); a review aid, not a deliverable |
 | `PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |

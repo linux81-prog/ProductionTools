@@ -130,6 +130,16 @@ def _keyword_amounts(rows: list[Row], patterns: list[tuple[str, float]], exclude
             amt = _amount_on(row, m.end())
             note = ""
             target_row = row
+            if amt is None and i > 0:
+                # Handwritten amounts often sit slightly above the printed label line.
+                prv = rows[i - 1]
+                close = prv.page == row.page and row.box.y0 - prv.box.y1 < 0.8 * row.box.h
+                if close and not re.search(r"[A-Z]{2,}", prv.text.upper()) and prv.box.x0 > row.box.x1:
+                    amt = _amount_on(prv)
+                    if amt is not None:
+                        target_row = prv
+                        weight *= 0.85
+                        note = "amount found just above its label (typical of handwriting)"
             if amt is None and i + 1 < len(rows):
                 nxt = rows[i + 1]
                 if not re.search(r"[A-Z]{3,}", nxt.text.upper()):  # next line is just a number
@@ -155,7 +165,10 @@ TOTAL_PATTERNS = [
 TOTAL_EXCLUDE = r"SUB\s*-?\s*TOTAL|SAVINGS|YOU\s+SAVED|ITEMS?\b|TOTAL\s+TAX|TAX\s+TOTAL|DISCOUNT|QTY|TIP\s+GUIDE|SUGGESTED"
 SUBTOTAL_PATTERNS = [(r"\bSUB\s*-?\s*TOTAL\b", 0.95)]
 TAX_PATTERNS = [(r"\b(SALES\s+)?TAX\b", 0.92)]
-EXTRA_PATTERNS = [(r"\b(SHIPPING|DELIVERY|HANDLING|FREIGHT|TIP|GRATUITY|SERVICE\s+(CHARGE|FEE))\b", 0.9)]
+EXTRA_PATTERNS = [(r"\b(SHIPPING|DELIVERY|HANDLING|FREIGHT|SERVICE\s+(CHARGE|FEE))\b", 0.9)]
+TIP_PATTERNS = [(r"\b(TIP|GRATUITY|GRAT)\b", 0.9)]
+SUGGESTED_TIP = r"SUGGEST|GUIDE|\d\s?%|PERCENT"
+HANDWRITTEN_CAP = 0.75   # amounts in the tip / final-total area always need a person to confirm
 TAX_EXCLUDE = r"TAX\s*(ID|EXEMPT|INVOICE)|PRE-?TAX|TAXABLE|SUB\s*-?\s*TOTAL|\bTOTAL\b(?!\s+TAX)"
 
 
@@ -166,33 +179,61 @@ def _field_from(c: Cand | None, name: str, source: str) -> FieldValue:
 
 
 def find_amounts(rows: list[Row], source: str) -> dict[str, FieldValue]:
+    """Find subtotal, tax, other charges, printed total, tip and final total.
+
+    Tip logic (petty cash rule set):
+      * "Suggested gratuity" lines (percentages, tip guides) are ignored: never assume they were paid.
+      * A TIP line BELOW the printed total is a tip added afterwards (usually handwritten);
+        a TOTAL line below that tip is the final amount paid.
+      * A TIP/GRATUITY line ABOVE the printed total is already included in it; it is never added twice.
+    """
+    row_index = {id(r): k for k, r in enumerate(rows)}
+    pos = lambda c: row_index[id(c.row)]
     subs = _keyword_amounts(rows, SUBTOTAL_PATTERNS, None)
     taxes = _keyword_amounts(rows, TAX_PATTERNS, TAX_EXCLUDE)
     totals = _keyword_amounts(rows, TOTAL_PATTERNS, TOTAL_EXCLUDE)
-
     extras = _keyword_amounts(rows, EXTRA_PATTERNS, r"SUB\s*-?\s*TOTAL|\bTOTAL\b|FREE")
+    suggested = [r for r in rows if re.search(r"\b(TIP|GRATUITY)\b", r.text.upper()) and re.search(SUGGESTED_TIP, r.text.upper())]
+    tip_rows = [k for k, r in enumerate(rows) if re.search(r"\b(TIP|GRATUITY|GRAT)\b", r.text.upper())
+                and not re.search(SUGGESTED_TIP, r.text.upper()) and not re.search(r"\bTOTAL\b", r.text.upper())]
+    tips = [c for c in _keyword_amounts(rows, TIP_PATTERNS, SUGGESTED_TIP + r"|\bTOTAL\b")]
+
+    # Which tip line (if any) comes after a printed total?
+    first_tip = None
+    for k in tip_rows:
+        if any(pos(c) < k for c in totals):
+            first_tip = k
+            break
+    if first_tip is None:  # tip lines (if any) sit above every total -> already included in the printed total
+        extras += [c for c in tips]
+        printed_cands, final_cands, tip_c = totals, [], None
+    else:
+        printed_cands = [c for c in totals if pos(c) < first_tip]
+        final_cands = [c for c in totals if pos(c) > first_tip]
+        tip_c = next((c for c in tips if pos(c) >= first_tip), None)
+        extras += [c for c in tips if pos(c) < first_tip]
+
     sub = max(subs, key=lambda c: c.conf) if subs else None
     tax = max(taxes, key=lambda c: c.conf) if taxes else None
     extra_sum = sum((c.value for c in extras), Decimal("0"))
     expected = (sub.value + tax.value + extra_sum) if (sub and tax) else None
     extra_txt = f" + other charges {extra_sum}" if extras else ""
 
-    total = None
-    if totals:
-        best_w = max(c.conf for c in totals)
-        contenders = [c for c in totals if c.conf >= best_w - 0.08]
+    printed = None
+    if printed_cands:
+        best_w = max(c.conf for c in printed_cands)
+        contenders = [c for c in printed_cands if c.conf >= best_w - 0.08]
         if sub and tax:
             exact = [c for c in contenders if c.value == expected]
             if exact:
-                total = exact[0]
-        if total is None:
-            total = max(contenders, key=lambda c: (c.value, c.conf))
+                printed = exact[0]
+        if printed is None:
+            printed = max(contenders, key=lambda c: (c.value, c.conf))
 
     fields = {"subtotal": _field_from(sub, "subtotal", source),
               "tax": _field_from(tax, "tax", source),
-              "total": _field_from(total, "total", source)}
-
-    t = fields["total"]
+              "printed_total": _field_from(printed, "printed_total", source)}
+    t = fields["printed_total"]
     if t.value is not None and sub and tax:
         if expected == t.value:
             t.confidence = round(min(0.99, t.confidence + 0.05), 3)
@@ -201,12 +242,60 @@ def find_amounts(rows: list[Row], source: str) -> dict[str, FieldValue]:
             t.confidence = round(t.confidence * 0.78, 3)
             t.note = (t.note + "; " if t.note else "") + (
                 f"subtotal {sub.value} + tax {tax.value}{extra_txt} = {expected}, not {t.value} (cross-check failed)")
+    if t.value is None and sub and not tax:
+        t.note = "no TOTAL line found"
     fields["other_charges"] = FieldValue("other_charges", extra_sum if extras else None,
                                          round(min((c.conf for c in extras), default=0.0), 3), source=source,
                                          note=", ".join(f"{c.row.text}" for c in extras))
-    if t.value is None and sub and not tax:
-        t.note = "no TOTAL line found"
+
+    def handwritten(c, name):
+        f = _field_from(c, name, source)
+        if c is not None:
+            f.confidence = round(min(f.confidence, HANDWRITTEN_CAP), 3)
+            f.note = (f.note + "; " if f.note else "") + "written after the printed total (often handwritten) - confirm"
+        return f
+
+    fields["tip"] = handwritten(tip_c, "tip") if first_tip is not None else FieldValue("tip", None, 0.0, note="no tip line")
+    if first_tip is not None and tip_c is None:
+        fields["tip"].note = "tip line present but no amount could be read - enter it if a tip was written"
+    final = max(final_cands, key=lambda c: c.conf) if final_cands else None
+    fields["final_total"] = handwritten(final, "final_total") if first_tip is not None else FieldValue("final_total", None, 0.0, note="no final-total line")
+    fields["suggested_tip"] = FieldValue("suggested_tip", "shown - not counted" if suggested else None, 1.0 if suggested else 0.0,
+                                         note="; ".join(r.text for r in suggested))
+    fields["total"] = resolve_total(fields)
     return fields
+
+
+def resolve_total(fields: dict[str, FieldValue]) -> FieldValue:
+    """Work out the expense amount (what was actually paid) from printed total, tip and final total."""
+    p, tip, fin = (fields.get(k) for k in ("printed_total", "tip", "final_total"))
+    pv = p.value if p else None
+    tv = tip.value if tip else None
+    fv = fin.value if fin else None
+    if fv is not None and tv is not None and pv is not None:
+        ok = pv + tv == fv
+        f = FieldValue("total", fv, min(fin.confidence, tip.confidence) if ok else min(0.5, fin.confidence),
+                       fin.page, fin.box, "final total", verified=fin.verified and tip.verified)
+        f.note = (f"printed {pv} + tip {tv} = final {fv} (check passed)" if ok else
+                  f"printed {pv} + tip {tv} = {pv + tv}, but the written final total is {fv} (difference {fv - (pv + tv)})")
+        f.tip_status = "verified" if ok else "mismatch"
+        return f
+    if tv is not None and pv is not None:
+        f = FieldValue("total", pv + tv, min(0.6, tip.confidence), None, None, "calculated",
+                       verified=tip.verified and p.verified and bool(getattr(fields.get("total"), "verified", False)))
+        f.note = f"final total blank: proposed {pv} + tip {tv} = {pv + tv} - needs confirmation"
+        f.tip_status = "proposed"
+        return f
+    if fv is not None and pv is not None:
+        f = FieldValue("total", fv, min(0.6, fin.confidence), fin.page, fin.box, "final total", verified=fin.verified)
+        f.note = f"final total {fv} written without a readable tip amount; implied tip {fv - pv} - confirm"
+        f.tip_status = "implied"
+        return f
+    if p is None:
+        return FieldValue("total", None, 0.0, note="not found")
+    f = FieldValue("total", p.value, p.confidence, p.page, p.box, p.source, verified=p.verified, note=p.note)
+    f.tip_status = "none"
+    return f
 
 
 # ----------------------------------------------------------------- date --
@@ -354,6 +443,8 @@ def find_payment(rows: list[Row], source: str) -> FieldValue:
                (r"\bCARD\s*(ENDING|#|\*{2,})", "Card")]
     for row in reversed(rows):
         up = row.text.upper()
+        if re.search(r"\b(TIP|GRATUITY)\b", up):
+            continue  # "CASH TIP" describes the tip, not how the bill was paid
         for pat, label in methods:
             m = re.search(pat, up)
             if m:
@@ -371,4 +462,20 @@ def parse_receipt(pages: list[Page], known_vendors: list[str] = ()) -> dict[str,
               "date": find_date(rows, source)}
     fields.update(find_amounts(rows, source))
     fields["payment"] = find_payment(rows, source)
+    fields["tip_method"] = tip_method(rows, fields)
     return fields
+
+
+def tip_method(rows: list[Row], fields: dict[str, FieldValue]) -> FieldValue:
+    """Was the tip paid by card (included in the charge) or in cash (paid separately)?"""
+    tip = fields.get("tip")
+    if not tip or (tip.value is None and fields["total"].tip_status in ("none", "")):
+        return FieldValue("tip_method", None, 0.0, note="no tip")
+    if any(re.search(r"CASH\s+(TIP|GRATUITY)|(TIP|GRATUITY)\s+(IN\s+|PAID\s+)?CASH", r.text.upper()) for r in rows):
+        return FieldValue("tip_method", "cash", 0.7, note="receipt says the tip was paid in cash - confirm")
+    pay = fields.get("payment")
+    if pay and pay.value and pay.value != "Cash":
+        return FieldValue("tip_method", "card", 0.7, note=f"tip written on a {pay.value} receipt, so normally charged to the card - confirm")
+    if pay and pay.value == "Cash":
+        return FieldValue("tip_method", "cash", 0.7, note="bill paid in cash - confirm the tip was paid from the same cash")
+    return FieldValue("tip_method", None, 0.0, note="unknown - ask whether the tip was paid by card or cash")
