@@ -64,7 +64,7 @@ def main():
                  "PC001_Reconciliation_Report.pdf", "PC001_Reconciliation_Report.xlsx", "run_summary.json",
                  "extraction_before_review.json"]:
         shutil.copy(v / name, OUT / name)
-    for sub in ("receipts_annotated", "receipts_clean", "draft_before_review"):
+    for sub in ("receipts_annotated", "receipts_clean", "review_previews"):
         shutil.copytree(v / sub, OUT / sub)
     shutil.copy(work / "audit.log", OUT / "audit.log")
 
@@ -76,7 +76,7 @@ def main():
     pres = res.preservation
     pres_rows = "\n".join(f"| {'PASS' if c['passed'] else '**FAIL**'} | {c['name']} | {c['detail']} |" for c in pres["checks"])
     allowed = "\n".join(f"- **{a}**: {why}" for a, why in ALLOWED_CHANGES)
-    seen = "\n".join(f"- {s}" for s in pres["allowed_changes_seen"]) or "- none (the fictional template already had the recalculate flag set, so workbook.xml did not change at all)"
+    seen = "\n".join(f"- {s}" for s in pres["allowed_changes_seen"]) or "- none"
 
     stress_fail_rows = []
     for row in stress_acc["rows"]:
@@ -160,7 +160,10 @@ person, which is the safety behaviour we need. Real receipts will vary more than
 ones; expect lower accuracy on handwriting, very faded thermal paper and unusual layouts.
 Handwriting was not tested in Stage 1.
 
-## 3. Workbook preservation (filled top sheet vs. original template)
+## 3. Workbook preservation (your master template vs. the filled copy)
+
+Template: `fixtures/templates/master_pc/PC_Sheet_Template.xlsx`, as you supplied it. It has
+5 sheets, array formulas, hidden helper columns and a Google Sheets export extension.
 
 **Overall: {'PASSED' if pres['passed'] else 'FAILED'}.** Two independent methods were used:
 (A) raw comparison of every internal part of the .xlsx file, and (B) re-opening both files
@@ -194,16 +197,19 @@ invoice was paid by card.
 
 ## 5. What failed, or needed manual correction
 
-**Fields the machine flagged for review before any person looked** (shown dashed with "?" in
-`draft_before_review/`):
+**Fields the machine flagged for review before any person looked** (shown with dashed circles in
+`review_previews/`):
 {review_needed}
 
 {corr_txt}
 
-The reviewer (fictional) also had to:
-- enter the account code and description for each receipt (by design, the app never guesses these yet),
-- confirm the café receipt's printed total despite its arithmetic error (left for the accountant),
-- confirm each receipt, because nothing counts as verified until a person says so.
+**About the review step:** Stage 1 has no screens yet, so the review was **simulated** with
+`fixtures/review.yaml`. No real person reviewed these receipts, and nothing in the outputs claims
+otherwise. That simulated review:
+- entered the account code and description for each receipt (the app never guesses these),
+- accepted the café receipt's printed total despite its arithmetic error (left for the accountant),
+- confirmed each receipt. In the real app, a receipt only counts as confirmed once a person
+  confirms it on screen.
 
 {pos_txt} Manual positioning is supported and tested (`tests/test_annotate.py`),
 and the visual editor arrives in Stage 3.
@@ -212,12 +218,19 @@ and the visual editor arrives in Stage 3.
 - **Top sheet PDF:** there is no Excel in the cloud, so `PC001_TopSheet.pdf` is a *cloud preview*
   made with LibreOffice and is clearly watermarked. It is not part of the app. On your Mac,
   Excel produces this page (Stage 2). The manual-export fallback page is tested too.
-- **Receipt-number placement:** chosen automatically as the emptiest spot on or next to the printed
-  text. On the narrow café receipt the number sits at the receipt's bottom edge, partly off the paper.
-  It's readable, but this is a case for the Stage 3 editor.
+- **Receipt-number placement:** the number is small and goes automatically in the emptiest spot on or
+  just beside the printed text. On some receipts that spot is in the paper margin; the Stage 3 editor
+  lets you move it.
+- **Existing pen marks:** a field that already has a coloured pen circle is not circled again (tested).
+  Circles drawn in black or pencil are hard to tell apart from printing and may not be detected.
+  You'll be able to remove a duplicate circle in the editor.
+- **Long descriptions** shrink to fit the template's narrow "For What" column (that's the template's own
+  shrink-to-fit setting). Shorter descriptions print larger.
+- **Master template:** "Envelope No" (S3) is a formula, so the envelope ID is not written on the sheet
+  (it's used in file names). "Category" is mapped to the department. Both need your confirmation.
 - **Heavy blur:** one of 12 stress photos failed (see 2b). It was flagged, not silently wrong.
-- **Overflow:** more receipts than the template's 15 line rows stops with a clear message.
-  Continuation sheets come in a later stage.
+- **Overflow:** more than 35 receipts (the master template's first sheet) stops with a clear message.
+  Continuation onto the template's sheets 2–4 comes in a later stage.
 - **Vendor names** are tidied from ALL CAPS ("HARDWARE BARN" → "Hardware Barn"). Unusual names
   may need a person to adjust them.
 
@@ -234,10 +247,10 @@ and the visual editor arrives in Stage 3.
 
 | File | What it is |
 |---|---|
-| `receipts_annotated/` | The three numbered, annotated receipt PDFs (named number_date_vendor_total) |
+| `receipts_annotated/` | The three receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#3); nothing else added |
 | `receipts_clean/` | The same receipts with no marks |
-| `draft_before_review/` | What the machine produced on its own, before human review (dashed = unverified) |
-| `PC001_TopSheet.xlsx` | The filled copy of the fictional top-sheet template |
+| `review_previews/` | The machine's own circles before review (dashed = not yet confirmed); a review aid, not a deliverable |
+| `PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |
 | `PC001_TopSheet.pdf` | Cloud preview of the top sheet (watermarked; Excel makes this on the Mac) |
 | `PC001_Combined_Annotated.pdf` | Top sheet + annotated receipts, with bookmarks |
 | `PC001_Combined_Clean.pdf` | Top sheet + clean receipts (the annotation toggle) |

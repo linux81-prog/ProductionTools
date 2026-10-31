@@ -1,10 +1,8 @@
-# FICTIONAL reviewer decisions for the Stage 1 demo.
+# SIMULATED reviewer decisions for the Stage 1 demo (fictional data).
 #
-# In the finished app a person makes these decisions on the review screen and in the
-# annotation editor (Stage 3). For Stage 1 they live in this file so the whole
-# workflow can run end to end. These were written AFTER looking at the
-# machine's draft results (outputs/v*/draft_before_review/ and
-# extraction_before_review.json), exactly as a person would.
+# In the finished app a real person makes these decisions on the review screen and
+# in the annotation editor (Stage 3). Stage 1 has no screens yet, so this file stands
+# in for that step. No real person reviewed these receipts, and the outputs say so.
 #
 # Supported per receipt:
 #   confirm: true            -> the person checked every extracted value against the image
@@ -12,7 +10,7 @@
 #   positions:   {field: {page: 0, box: [x0, y0, x1, y1], reason: ...}}   (fractions of the page, 0-1)
 #   number_position: [x0, y0, x1, y1]
 #   account_code, description
-reviewer: "Sam Rivera (fictional production accountant)"
+reviewer: "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
 
 receipts:
   01_hardware_barn_photo.jpg:

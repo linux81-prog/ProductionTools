@@ -1,10 +1,10 @@
 # Stage 1 — Test Results and Demo Report
 
-Generated 2026-10-31 20:02 in the cloud development environment. **All data is fictional.**
+Generated 2026-10-31 20:23 in the cloud development environment. **All data is fictional.**
 
 ## 1. Automated tests
 
-**Result: 43 passed, 1 warning in 18.11s**
+**Result: 48 passed, 1 warning in 51.15s**
 
 Every test runs with the app-level network lock installed, so any accidental outbound
 connection would make the suite fail.
@@ -12,7 +12,10 @@ connection would make the suite fail.
 <details><summary>All test names and results</summary>
 
 ```
-tests/test_annotate.py::test_missing_location_is_reported_for_manual_placement PASSED
+tests/test_annotate.py::test_only_number_is_added_no_labels_footer_or_signatures PASSED
+tests/test_annotate.py::test_page_size_is_unchanged_for_pdf_receipts PASSED
+tests/test_annotate.py::test_existing_pen_circle_is_not_duplicated PASSED
+tests/test_annotate.py::test_existing_number_is_not_duplicated PASSED
 tests/test_annotate.py::test_manual_position_from_reviewer_is_used PASSED
 tests/test_annotate.py::test_clean_version_has_no_marks PASSED
 tests/test_end_to_end.py::test_all_outputs_exist_with_consistent_names PASSED
@@ -20,9 +23,10 @@ tests/test_end_to_end.py::test_combined_pdf_order_and_bookmarks PASSED
 tests/test_end_to_end.py::test_reconciliation_flags_the_planted_problems PASSED
 tests/test_end_to_end.py::test_topsheet_values_and_preservation PASSED
 tests/test_end_to_end.py::test_originals_preserved_and_locked PASSED
-tests/test_end_to_end.py::test_annotated_and_clean_differ PASSED
+tests/test_end_to_end.py::test_annotated_receipts_carry_only_number_and_circles PASSED
 tests/test_end_to_end.py::test_no_unexpected_network_attempts PASSED
 tests/test_end_to_end.py::test_second_run_creates_new_version_without_overwriting PASSED
+tests/test_end_to_end.py::test_master_template_envelope PASSED
 tests/test_filestore.py::test_import_copies_fingerprints_and_locks PASSED
 tests/test_filestore.py::test_duplicate_import_is_detected_not_copied PASSED
 tests/test_filestore.py::test_verify_detects_a_changed_original PASSED
@@ -55,6 +59,7 @@ tests/test_template_preservation.py::test_writes_cells_that_do_not_exist_yet PAS
 tests/test_template_preservation.py::test_checker_catches_an_unmapped_change PASSED
 tests/test_template_preservation.py::test_checker_catches_a_dropped_image PASSED
 tests/test_template_preservation.py::test_profile_loads_and_matches_template PASSED
+tests/test_template_preservation.py::test_master_template_preserved PASSED
 ```
 </details>
 
@@ -123,7 +128,10 @@ person, which is the safety behaviour we need. Real receipts will vary more than
 ones; expect lower accuracy on handwriting, very faded thermal paper and unusual layouts.
 Handwriting was not tested in Stage 1.
 
-## 3. Workbook preservation (filled top sheet vs. original template)
+## 3. Workbook preservation (your master template vs. the filled copy)
+
+Template: `fixtures/templates/master_pc/PC_Sheet_Template.xlsx`, as you supplied it. It has
+5 sheets, array formulas, hidden helper columns and a Google Sheets export extension.
 
 **Overall: PASSED.** Two independent methods were used:
 (A) raw comparison of every internal part of the .xlsx file, and (B) re-opening both files
@@ -131,16 +139,16 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 
 | Result | Check | Detail |
 |---|---|---|
-| PASS | Same internal parts (no part added or removed) | 14 parts in template, 14 in filled copy |
-| PASS | All unrelated parts byte-identical (styles, images, drawings, shared strings, printer settings, other sheets, theme, metadata) | 12 parts identical |
+| PASS | Same internal parts (no part added or removed) | 25 parts in template, 25 in filled copy |
+| PASS | All unrelated parts byte-identical (styles, images, drawings, shared strings, printer settings, other sheets, theme, metadata) | 23 parts identical |
 | PASS | workbook.xml identical apart from the recalculate-on-open flag (sheet order, defined names, print areas) |  |
 | PASS | Worksheet settings outside the cell grid byte-identical (merged cells, conditional formatting, data validation, page setup, margins, header/footer, column widths, drawing link) |  |
-| PASS | Only mapped cells changed; every mapped cell kept its formatting style | 166 template cells checked |
-| PASS | Sheet names and order unchanged | Top Sheet, Account Codes |
-| PASS | Workbook defined names unchanged | 3 names: ['AccountCodes', 'AccountCodes_List', 'TotalSpent'] |
-| PASS | All cell values and formulas unchanged outside mapped cells (all sheets) | 264 cells compared, 20 formulas |
-| PASS | All cell formatting unchanged, including mapped cells (fonts, fills, borders, alignment, number formats, protection) | 264 cells compared |
-| PASS | Merged cells, conditional formatting, data validation, print area/titles, page setup, margins, header/footer, print options, images, column widths, row heights, frozen panes unchanged | checked on 2 sheets |
+| PASS | Only mapped cells changed; every mapped cell kept its formatting style | 31000 template cells checked |
+| PASS | Sheet names and order unchanged | PC Formulas (1), PC Formulas (2), PC Formulas (3), PC Formulas (4), PC Blank (For Printing) |
+| PASS | Workbook defined names unchanged | 0 names: [] |
+| PASS | All cell values and formulas unchanged outside mapped cells (all sheets) | 150000 cells compared, 2699 formulas |
+| PASS | All cell formatting unchanged, including mapped cells (fonts, fills, borders, alignment, number formats, protection) | 150000 cells compared |
+| PASS | Merged cells, conditional formatting, data validation, print area/titles, page setup, margins, header/footer, print options, images, column widths, row heights, frozen panes unchanged | checked on 5 sheets |
 
 **Documented intentional changes (the only differences allowed):**
 - **Mapped cell values**: Only the cells listed in the template profile receive new values; each keeps its original formatting style.
@@ -148,7 +156,7 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 - **Row 'spans' hint (only if needed)**: An optional performance hint listing which columns a row uses; widened only when a mapped cell is outside it. No visual effect.
 
 **Allowed changes actually seen in this run:**
-- none (the fictional template already had the recalculate flag set, so workbook.xml did not change at all)
+- workbook.xml: fullCalcOnLoad="1" set (Excel recalculates on open)
 
 The tests also confirm that the checker **catches** problems. It fails on a changed formula
 in an unmapped cell, and on a damaged logo image. They also confirm that filling **refuses**
@@ -170,16 +178,19 @@ invoice was paid by card.
 
 ## 5. What failed, or needed manual correction
 
-**Fields the machine flagged for review before any person looked** (shown dashed with "?" in
-`draft_before_review/`):
+**Fields the machine flagged for review before any person looked** (shown with dashed circles in
+`review_previews/`):
 - `02_copper_kettle_scan.pdf`: **total** = 94.94 (confidence 72%) — subtotal 86.25 + tax 8.19 = 94.44, not 94.94 (cross-check failed)
 
 **Manual corrections the reviewer had to make on the demo receipts: 0.** All vendor, date, total, subtotal, tax and payment values were read correctly.
 
-The reviewer (fictional) also had to:
-- enter the account code and description for each receipt (by design, the app never guesses these yet),
-- confirm the café receipt's printed total despite its arithmetic error (left for the accountant),
-- confirm each receipt, because nothing counts as verified until a person says so.
+**About the review step:** Stage 1 has no screens yet, so the review was **simulated** with
+`fixtures/review.yaml`. No real person reviewed these receipts, and nothing in the outputs claims
+otherwise. That simulated review:
+- entered the account code and description for each receipt (the app never guesses these),
+- accepted the café receipt's printed total despite its arithmetic error (left for the accountant),
+- confirmed each receipt. In the real app, a receipt only counts as confirmed once a person
+  confirms it on screen.
 
 **Manual annotation positioning needed: 0** in this demo. Every vendor, date and total was located automatically. Manual positioning is supported and tested (`tests/test_annotate.py`),
 and the visual editor arrives in Stage 3.
@@ -188,12 +199,19 @@ and the visual editor arrives in Stage 3.
 - **Top sheet PDF:** there is no Excel in the cloud, so `PC001_TopSheet.pdf` is a *cloud preview*
   made with LibreOffice and is clearly watermarked. It is not part of the app. On your Mac,
   Excel produces this page (Stage 2). The manual-export fallback page is tested too.
-- **Receipt-number placement:** chosen automatically as the emptiest spot on or next to the printed
-  text. On the narrow café receipt the number sits at the receipt's bottom edge, partly off the paper.
-  It's readable, but this is a case for the Stage 3 editor.
+- **Receipt-number placement:** the number is small and goes automatically in the emptiest spot on or
+  just beside the printed text. On some receipts that spot is in the paper margin; the Stage 3 editor
+  lets you move it.
+- **Existing pen marks:** a field that already has a coloured pen circle is not circled again (tested).
+  Circles drawn in black or pencil are hard to tell apart from printing and may not be detected.
+  You'll be able to remove a duplicate circle in the editor.
+- **Long descriptions** shrink to fit the template's narrow "For What" column (that's the template's own
+  shrink-to-fit setting). Shorter descriptions print larger.
+- **Master template:** "Envelope No" (S3) is a formula, so the envelope ID is not written on the sheet
+  (it's used in file names). "Category" is mapped to the department. Both need your confirmation.
 - **Heavy blur:** one of 12 stress photos failed (see 2b). It was flagged, not silently wrong.
-- **Overflow:** more receipts than the template's 15 line rows stops with a clear message.
-  Continuation sheets come in a later stage.
+- **Overflow:** more than 35 receipts (the master template's first sheet) stops with a clear message.
+  Continuation onto the template's sheets 2–4 comes in a later stage.
 - **Vendor names** are tidied from ALL CAPS ("HARDWARE BARN" → "Hardware Barn"). Unusual names
   may need a person to adjust them.
 
@@ -210,10 +228,10 @@ and the visual editor arrives in Stage 3.
 
 | File | What it is |
 |---|---|
-| `receipts_annotated/` | The three numbered, annotated receipt PDFs (named number_date_vendor_total) |
+| `receipts_annotated/` | The three receipt PDFs: circles around vendor, date and total, plus a small receipt number (#1–#3); nothing else added |
 | `receipts_clean/` | The same receipts with no marks |
-| `draft_before_review/` | What the machine produced on its own, before human review (dashed = unverified) |
-| `PC001_TopSheet.xlsx` | The filled copy of the fictional top-sheet template |
+| `review_previews/` | The machine's own circles before review (dashed = not yet confirmed); a review aid, not a deliverable |
+| `PC001_TopSheet.xlsx` | A filled copy of **your master template** (the template file itself is unchanged) |
 | `PC001_TopSheet.pdf` | Cloud preview of the top sheet (watermarked; Excel makes this on the Mac) |
 | `PC001_Combined_Annotated.pdf` | Top sheet + annotated receipts, with bookmarks |
 | `PC001_Combined_Clean.pdf` | Top sheet + clean receipts (the annotation toggle) |

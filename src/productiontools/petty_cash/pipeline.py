@@ -29,7 +29,7 @@ from .mapping import load_profile
 from .models import Envelope, Receipt
 from .parse import parse_receipt
 from .review import apply_review, load_review
-from .template_fill import fill_topsheet
+from .template_fill import fill_topsheet, receipt_label
 
 # A provider turns the filled .xlsx into a PDF. On the Mac this will be the
 # Excel bridge (Stage 2); returning None means "not available" -> manual fallback.
@@ -56,7 +56,7 @@ def load_envelope(path: Path) -> tuple[Envelope, list[str]]:
         period_start=as_date(d["period_start"]), period_end=as_date(d["period_end"]),
         float_amount=Decimal(str(d["float_amount"])), cash_returned=Decimal(str(d["cash_returned"])),
         reported_total=Decimal(str(d["reported_total"])),
-        per_receipt_limit=Decimal(str(d.get("per_receipt_limit", "250.00"))))
+        per_receipt_limit=Decimal(str(d.get("per_receipt_limit", "250.00"))), crew_phone=str(d.get("crew_phone", "")))
     return env, list(d["receipts"])
 
 
@@ -96,11 +96,11 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
                                   "fields": _field_json(r)} for r in env.receipts}
     write_new_text(vdir / "extraction_before_review.json", json.dumps(extraction, indent=2))
 
-    # 2. draft annotations exactly as the machine placed them (before any human review)
+    # 2. review previews: the machine's own marks before any human review (dashed = unconfirmed).
+    #    No number yet - numbering happens after review, once dates are confirmed.
     for i, r in enumerate(env.receipts, start=1):
-        r.number = f"DRAFT-{i:02d}"
-        write_new_bytes(vdir / "draft_before_review" / f"DRAFT-{i:02d}_{Path(r.source_name).stem}.pdf",
-                        annotate.render_receipt_pdf(r, annotated=True, draft=True, account_lookup=chart))
+        write_new_bytes(vdir / "review_previews" / f"preview-{i:02d}_{Path(r.source_name).stem}.pdf",
+                        annotate.render_receipt_pdf(r, annotated=True, draft=True))
 
     # 3. human review decisions
     if review_path:
@@ -110,14 +110,17 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
     order = sorted(range(len(env.receipts)), key=lambda i: (env.receipts[i].date or date.max, i))
     env.receipts = [env.receipts[i] for i in order]
     for i, r in enumerate(env.receipts, start=1):
-        r.number = f"{env.envelope_number}-{i:03d}"
-        audit.record("receipt_numbered", file=r.source_name, number=r.number)
+        r.number, r.seq = f"{env.envelope_number}-{i:03d}", i
+        r.label = receipt_label(r, profile)
+        audit.record("receipt_numbered", file=r.source_name, number=r.number, label=r.label)
 
     # 5. individual receipt PDFs
     annotated, clean = [], []
     for r in env.receipts:
         fname = pdf_out.receipt_filename(r)
-        a = annotate.render_receipt_pdf(r, annotated=True, account_lookup=chart)
+        a = annotate.render_receipt_pdf(r, annotated=True)
+        for field_name, why in r.annotation_notes.items():
+            audit.record("annotation_skipped", file=r.source_name, field=field_name, reason=why)
         c = annotate.render_receipt_pdf(r, annotated=False)
         write_new_bytes(vdir / "receipts_annotated" / fname, a)
         write_new_bytes(vdir / "receipts_clean" / fname, c)

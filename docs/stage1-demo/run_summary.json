@@ -66,7 +66,7 @@
           "note": ""
         }
       },
-      "verified_by": "Sam Rivera (fictional production accountant)"
+      "verified_by": "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
     },
     {
       "number": "PC001-002",
@@ -123,7 +123,7 @@
           "note": ""
         }
       },
-      "verified_by": "Sam Rivera (fictional production accountant)"
+      "verified_by": "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
     },
     {
       "number": "PC001-003",
@@ -180,7 +180,7 @@
           "note": ""
         }
       },
-      "verified_by": "Sam Rivera (fictional production accountant)"
+      "verified_by": "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
     }
   ],
   "topsheet_pdf_source": "cloud preview (LibreOffice in the dev container; NOT Excel output, not part of the app)",
@@ -213,12 +213,12 @@
       {
         "name": "Same internal parts (no part added or removed)",
         "passed": true,
-        "detail": "14 parts in template, 14 in filled copy"
+        "detail": "25 parts in template, 25 in filled copy"
       },
       {
         "name": "All unrelated parts byte-identical (styles, images, drawings, shared strings, printer settings, other sheets, theme, metadata)",
         "passed": true,
-        "detail": "12 parts identical"
+        "detail": "23 parts identical"
       },
       {
         "name": "workbook.xml identical apart from the recalculate-on-open flag (sheet order, defined names, print areas)",
@@ -233,34 +233,36 @@
       {
         "name": "Only mapped cells changed; every mapped cell kept its formatting style",
         "passed": true,
-        "detail": "166 template cells checked"
+        "detail": "31000 template cells checked"
       },
       {
         "name": "Sheet names and order unchanged",
         "passed": true,
-        "detail": "Top Sheet, Account Codes"
+        "detail": "PC Formulas (1), PC Formulas (2), PC Formulas (3), PC Formulas (4), PC Blank (For Printing)"
       },
       {
         "name": "Workbook defined names unchanged",
         "passed": true,
-        "detail": "3 names: ['AccountCodes', 'AccountCodes_List', 'TotalSpent']"
+        "detail": "0 names: []"
       },
       {
         "name": "All cell values and formulas unchanged outside mapped cells (all sheets)",
         "passed": true,
-        "detail": "264 cells compared, 20 formulas"
+        "detail": "150000 cells compared, 2699 formulas"
       },
       {
         "name": "All cell formatting unchanged, including mapped cells (fonts, fills, borders, alignment, number formats, protection)",
         "passed": true,
-        "detail": "264 cells compared"
+        "detail": "150000 cells compared"
       },
       {
         "name": "Merged cells, conditional formatting, data validation, print area/titles, page setup, margins, header/footer, print options, images, column widths, row heights, frozen panes unchanged",
         "passed": true,
-        "detail": "checked on 2 sheets"
+        "detail": "checked on 5 sheets"
       }
     ],
-    "allowed_changes_seen": []
+    "allowed_changes_seen": [
+      "workbook.xml: fullCalcOnLoad=\"1\" set (Excel recalculates on open)"
+    ]
   }
 }

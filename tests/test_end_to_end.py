@@ -38,7 +38,7 @@ def test_all_outputs_exist_with_consistent_names(run):
     for name in ["PC001_TopSheet.xlsx", "PC001_TopSheet.pdf", "PC001_Combined_Annotated.pdf", "PC001_Combined_Clean.pdf",
                  "PC001_Reconciliation_Report.pdf", "PC001_Reconciliation_Report.xlsx", "run_summary.json"]:
         assert (v / name).exists(), name
-    assert len(list((v / "draft_before_review").iterdir())) == 3
+    assert len(list((v / "review_previews").iterdir())) == 3
 
 
 def test_combined_pdf_order_and_bookmarks(run):
@@ -80,13 +80,16 @@ def test_originals_preserved_and_locked(run):
     assert all(o["unchanged"] and o["read_only"] for o in summary["originals"])
 
 
-def test_annotated_and_clean_differ(run):
+def test_annotated_receipts_carry_only_number_and_circles(run):
     res, _, _ = run
     for name in EXPECTED:
         a = (res.version_dir / "receipts_annotated" / name).read_bytes()
         c = (res.version_dir / "receipts_clean" / name).read_bytes()
         assert a != c
-        assert "Verified by" in PdfReader(io.BytesIO(a)).pages[0].extract_text()
+        txt = PdfReader(io.BytesIO(a)).pages[0].extract_text()
+        assert name.split("_")[0] in txt                        # the receipt number (full style for this template)
+        for unwanted in ("Verified", "Acct", "VENDOR", "DRAFT"):
+            assert unwanted not in txt
 
 
 def test_no_unexpected_network_attempts(run):
@@ -102,3 +105,22 @@ def test_second_run_creates_new_version_without_overwriting(run, chart_module):
     assert res2.version_dir.name == "v2"
     assert all(p.read_bytes() == b for p, b in first.items())
     assert len([l for l in (project / "originals" / "manifest.jsonl").read_text().splitlines() if l]) == 3
+
+
+def test_master_template_envelope(tmp_path, chart_module):
+    """The user-supplied master template: index numbering, numeric line numbers, template formulas untouched."""
+    import openpyxl
+    profile = FIX / "templates" / "master_pc" / "PC_Sheet_Template.profile.yaml"
+    template = FIX / "templates" / "master_pc" / "PC_Sheet_Template.xlsx"
+    before = sha256_file(template)
+    res = run_envelope(FIX / "envelope.yaml", FIX / "receipts", profile, chart_module, tmp_path, FIX / "review.yaml")
+    assert res.preservation["passed"]
+    assert sha256_file(template) == before
+    ws = openpyxl.load_workbook(res.version_dir / "PC001_TopSheet.xlsx")["PC Formulas (1)"]
+    assert [ws[f"B{r}"].value for r in (8, 9, 10)] == [1, 2, 3]
+    assert [ws[f"F{r}"].value for r in (8, 9, 10)] == [2410, 3510, 2510]   # numbers, so the breakdown formulas work
+    assert [ws[f"E{r}"].value for r in (8, 9, 10)] == [81.3, 94.94, 100.29]
+    assert ws["E48"].value == 300 and ws["A3"].value == "Jordan Avery" and ws["E3"].value == 5550102020
+    assert ws["E44"].value == '=IF(SUM(E8:E42),SUM(E8:E42),"")'
+    txt = PdfReader(str(res.version_dir / "receipts_annotated" / EXPECTED[0])).pages[0].extract_text()
+    assert "#1" in txt

@@ -78,6 +78,9 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
         if None not in key[1:] and key in seen_key:
             add("WARNING", n, "Possible duplicate", f"Same vendor, date and total as {seen_key[key]}.", "Confirm these are separate purchases.")
         seen_key.setdefault(key, n)
+        for field_name, why in r.annotation_notes.items():
+            if "already" in why:
+                add("INFO", n, "Existing marking", f"{field_name}: {why}.", "No action needed; check the original marking is correct.")
         for o in r.overrides:
             add("INFO", n, "Manual override", f"{o['kind']}: {o['field']} {o['old']} → {o['new']}"
                 + (f" ({o['reason']})" if o.get("reason") else ""), "Recorded in the audit log.")

@@ -140,6 +140,13 @@ def package_level(original: Path, filled: Path, sheet_part: str, mapped: set[str
 
 
 # ----------------------------------------------------------- semantic level --
+def _val(v):
+    """Comparable form of a cell value (array formulas are objects in openpyxl)."""
+    if hasattr(v, "text") and hasattr(v, "ref"):
+        return ("array-formula", str(v.ref), v.text)
+    return v
+
+
 def _style_sig(cell) -> tuple:
     return (repr(cell.font), repr(cell.fill), repr(cell.border), repr(cell.alignment),
             cell.number_format, repr(cell.protection))
@@ -164,10 +171,10 @@ def semantic_level(original: Path, filled: Path, sheet_name: str, mapped: set[st
         for coord in sorted(coords):
             co, cf = so[coord], sf[coord]
             cells += 1
-            if isinstance(co.value, str) and co.value.startswith("="):
+            if (isinstance(co.value, str) and co.value.startswith("=")) or hasattr(co.value, "ref"):
                 formula_count += 1
             is_mapped = name == sheet_name and coord in mapped
-            if not is_mapped and co.value != cf.value:
+            if not is_mapped and _val(co.value) != _val(cf.value):
                 value_diffs.append(f"{name}!{coord}")
             if _style_sig(co) != _style_sig(cf):
                 style_diffs.append(f"{name}!{coord}")

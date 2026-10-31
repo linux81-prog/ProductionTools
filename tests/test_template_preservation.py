@@ -122,3 +122,18 @@ def test_profile_loads_and_matches_template():
     p = load_profile(PROFILE)
     assert p.template_file == TEMPLATE and p.sheet == "Top Sheet"
     assert "F" not in p.columns.values()  # formula column deliberately unmapped
+
+
+def test_master_template_preserved(tmp_path):
+    """User-supplied template (Google-Sheets-exported, array formulas, hidden helper columns, 5 sheets)."""
+    from conftest import FIX
+    master = FIX / "templates" / "master_pc" / "PC_Sheet_Template.xlsx"
+    values = {"A3": "Jordan Avery", "E3": 5550102020, "A8": date(2026, 10, 14), "B8": 1, "C8": "Hardware Barn",
+              "D8": "Gaffer tape", "E8": Decimal("81.30"), "F8": 2410, "E48": Decimal("300.00")}
+    out = tmp_path / "filled.xlsx"
+    info = fill_template_copy(master, out, "PC Formulas (1)", values)
+    rep = xlsx_integrity.compare(master, out, "PC Formulas (1)", info["sheet_part"], values)
+    assert rep.passed, [c for c in rep.checks if not c.passed]
+    assert any("fullCalcOnLoad" in a for a in rep.allowed_changes_seen)   # template had an empty <calcPr/>
+    with pytest.raises(TemplateMappingError, match="formula"):
+        fill_template_copy(master, tmp_path / "x.xlsx", "PC Formulas (1)", {"S3": "PC001"})  # Envelope No is a formula

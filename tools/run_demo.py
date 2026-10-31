@@ -30,7 +30,7 @@ def run(out: Path):
     return run_envelope(
         envelope_yaml=FIX / "envelope.yaml",
         receipts_dir=FIX / "receipts",
-        profile_path=FIX / "templates" / "bluebird_lane_topsheet.profile.yaml",
+        profile_path=FIX / "templates" / "master_pc" / "PC_Sheet_Template.profile.yaml",
         chart=chart,
         project_dir=out,
         review_path=FIX / "review.yaml",

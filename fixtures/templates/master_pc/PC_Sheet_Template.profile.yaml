@@ -1,0 +1,42 @@
+# Template profile for the user-supplied master petty cash top sheet
+# ("PETTY CASH SUMMARY", version 1.3a form). The template file itself is never
+# modified; ProductionTools fills a copy.
+#
+# Mapping notes (please confirm):
+#  - "Category" (P3) is mapped to the crew member's department. Change if your
+#    productions use Category differently.
+#  - "Envelope No" (S3) is a formula in the template ("1 of N" pages), so the
+#    app does not write there. The envelope ID (e.g. PC001) is used in file names.
+#  - "Line No" (F) must be a number for the template's line-number breakdown
+#    formulas to work, so account codes are written as numbers.
+#  - The receipts total, total of all envelopes and balance due are calculated by
+#    the template's own formulas; the app only supplies AMOUNT RECEIVED (the float).
+#  - Up to 35 receipts fit on the first sheet (rows 8-42). Continuation onto
+#    "PC Formulas (2)"-(4) will come in a later stage; for now more than 35 stops
+#    with a clear message.
+name: Master Petty Cash Summary (user-supplied template)
+profile_version: 1
+template_file: PC_Sheet_Template.xlsx
+sheet: PC Formulas (1)
+receipt_number: index        # the "Rec't No" column holds 1, 2, 3...; receipts are marked #1, #2, #3
+
+header:
+  crew_member: A3
+  crew_phone: {cell: E3, type: digits}
+  production: I3
+  production_number: M3
+  department: P3
+  float_amount: {cell: E48, type: money}
+
+line_items:
+  first_row: 8
+  max_rows: 35
+  columns:
+    date: A
+    number: B
+    vendor: C
+    description: D
+    amount: {col: E, type: money}
+    account_code: {col: F, type: number}
+
+overflow: refuse

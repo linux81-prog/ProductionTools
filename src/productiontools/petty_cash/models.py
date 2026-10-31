@@ -91,7 +91,10 @@ class Receipt:
     sha256: str
     pages: list[Page]
     fields: dict[str, FieldValue] = field(default_factory=dict)
-    number: str | None = None
+    number: str | None = None          # full receipt number, e.g. PC001-003 (used in file names)
+    seq: int | None = None             # position in the envelope: 1, 2, 3...
+    label: str | None = None           # what is written on the receipt (matches the top sheet's number column)
+    annotation_notes: dict = field(default_factory=dict)
     account_code: str | None = None
     description: str | None = None
     verified_by: str | None = None
@@ -130,4 +133,5 @@ class Envelope:
     cash_returned: Decimal
     reported_total: Decimal       # what the crew member wrote on the envelope
     per_receipt_limit: Decimal = Decimal("250.00")
+    crew_phone: str = ""
     receipts: list[Receipt] = field(default_factory=list)

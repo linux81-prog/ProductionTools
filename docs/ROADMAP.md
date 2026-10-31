@@ -34,21 +34,36 @@ Modules 2–4 together form **one integrated PO Management module**, and it take
 priority over the crew features.
 
 ## Petty Cash stages
-1. **End-to-end demo on three fictional receipts (cloud only).** Reads each receipt,
-   draws circles around vendor, date and total, adds the receipt number, fills a copy
-   of the top sheet, and produces the individual receipt PDFs, combined PDFs and
-   reconciliation report.
+Detailed requirements: [specs/petty-cash.md](specs/petty-cash.md). It covers user-supplied
+templates, the simplified annotations, and the two workflows: **Mode A — Create** and
+**Mode B — Verify**.
+
+1. **End-to-end demo of Mode A (cloud only).** Done. It now uses the user's master
+   template and the simplified circles-plus-number annotations.
 2. **Excel export test kit.** A small AppleScript test with nothing to install, run with
-   Wi-Fi off. The simplest supported method is tried first, and a manual export fallback
-   is always kept. Full source code, an explanation and the permissions it asks for are
+   Wi-Fi off. The simplest supported method is tried first, and a manual export fallback is
+   always kept. Full source code, an explanation and the permissions it asks for are
    provided before anything runs on the Mac.
-3. **The browser app on the Mac:** receipt import, review screen, annotation editor,
-   annotated/clean toggle, and the Excel step with its fallback.
-4. **Template mapping screen**, plus a profile for the user's real blank template.
-5. **Envelope safeguards:** locked numbering and revisions, duplicate detection, audit
-   log, automatic backups, the full set of reconciliation rules, and network-activity
-   hardening.
-6. **Polish, user guide, and a local trial on the Mac → v1.0.**
+3. **The browser app on the Mac (Mode A):**
+   - a mode choice: Create / Verify
+   - receipt import
+   - review screen
+   - annotation editor
+   - annotated/clean toggle
+   - **uploading a blank template and choosing a saved mapping profile**
+   - the Excel step with its fallback
+4. **Template mapping screen:** click cells to map a new company's template, preview with
+   fictional values, then save the approved profile. Also continuation sheets for envelopes
+   with more receipts than fit on one sheet.
+5. **Mode B — Verify an existing envelope** (new):
+   - read completed Excel or PDF top sheets
+   - split combined receipt PDFs
+   - match top-sheet lines to receipts
+   - produce the PASS/WARNING/ERROR verification report
+   - change nothing in the submitted documents
+6. **Envelope safeguards:** locked numbering and revisions, duplicate detection, audit log,
+   automatic backups, the full set of reconciliation rules, and network-activity hardening.
+7. **Polish, user guide, and a local trial on the Mac → v1.0.**
 
 ## Expected changes to the architecture for PO Management (no redesign)
 The PO modules reuse the Stage 1 core unchanged:
@@ -82,4 +97,6 @@ Additions planned for when PO work starts:
   cloud environment yet.
 - A HotBudget reference file.
 - A blank PO top-sheet template, and the PO numbering convention.
-- A blank petty cash top-sheet template (Stage 4).
+- Confirmation of two points about the master top sheet: what "Category" means, and
+  whether the envelope ID should appear on the sheet.
+- Later: blank or fictional examples of completed envelopes in other formats, to test Mode B.
