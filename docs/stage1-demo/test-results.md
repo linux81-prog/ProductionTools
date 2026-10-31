@@ -1,10 +1,10 @@
 # Stage 1 — Test Results and Demo Report
 
-Generated 2026-10-31 20:51 in the cloud development environment. **All data is fictional.**
+Generated 2026-10-31 21:09 in the cloud development environment. **All data is fictional.**
 
 ## 1. Automated tests
 
-**Result: 59 passed, 1 warning in 65.17s (0:01:05)**
+**Result: 67 passed, 1 warning in 66.70s (0:01:06)**
 
 Every test runs with the app-level network lock installed, so any accidental outbound
 connection would make the suite fail.
@@ -34,7 +34,7 @@ tests/test_filestore.py::test_never_overwrite PASSED
 tests/test_filestore.py::test_versions_are_never_reused PASSED
 tests/test_line_list_and_ids.py::test_line_list_formats PASSED
 tests/test_line_list_and_ids.py::test_conflicting_duplicate_line_is_rejected PASSED
-tests/test_line_list_and_ids.py::test_description_filled_only_when_blank PASSED
+tests/test_line_list_and_ids.py::test_account_description_filled_purchase_description_untouched PASSED
 tests/test_line_list_and_ids.py::test_envelope_ids_unique_per_project PASSED
 tests/test_netguard.py::test_outbound_connection_is_blocked_and_recorded PASSED
 tests/test_netguard.py::test_dns_lookup_of_outside_name_is_blocked PASSED
@@ -52,6 +52,12 @@ tests/test_parse_and_recon.py::test_balanced_envelope_has_no_errors PASSED
 tests/test_parse_and_recon.py::test_shortage_and_overage PASSED
 tests/test_parse_and_recon.py::test_flags_duplicates_dates_limits_codes_and_unverified PASSED
 tests/test_parse_and_recon.py::test_reported_total_mismatch PASSED
+tests/test_payments.py::test_cash_is_float_but_card_is_unknown_until_classified PASSED
+tests/test_payments.py::test_company_card_is_never_reimbursed PASSED
+tests/test_payments.py::test_card_bill_with_cash_tip_is_split_and_counted_once PASSED
+tests/test_payments.py::test_card_tip_is_inside_the_card_charge PASSED
+tests/test_payments.py::test_cash_tip_with_unknown_payer_needs_review PASSED
+tests/test_payments.py::test_envelope_flags_and_totals PASSED
 tests/test_template_preservation.py::test_fill_passes_every_preservation_check PASSED
 tests/test_template_preservation.py::test_values_and_formulas_after_fill PASSED
 tests/test_template_preservation.py::test_recalculate_flag_added_when_template_lacks_it PASSED
@@ -64,6 +70,8 @@ tests/test_template_preservation.py::test_checker_catches_an_unmapped_change PAS
 tests/test_template_preservation.py::test_checker_catches_a_dropped_image PASSED
 tests/test_template_preservation.py::test_profile_loads_and_matches_template PASSED
 tests/test_template_preservation.py::test_master_template_preserved PASSED
+tests/test_template_preservation.py::test_envelope_no_replacement_guarded_and_page_numbering_intact PASSED
+tests/test_template_preservation.py::test_replace_formula_requires_expected_formula PASSED
 tests/test_tips.py::test_tip_and_final_written_and_consistent PASSED
 tests/test_tips.py::test_tip_without_final_proposes_amount_needing_confirmation PASSED
 tests/test_tips.py::test_mismatch_is_flagged PASSED
@@ -190,6 +198,7 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 | PASS | All cell values and formulas unchanged outside mapped cells (all sheets) | 150000 cells compared, 2699 formulas |
 | PASS | All cell formatting unchanged, including mapped cells (fonts, fills, borders, alignment, number formats, protection) | 150000 cells compared |
 | PASS | Merged cells, conditional formatting, data validation, print area/titles, page setup, margins, header/footer, print options, images, column widths, row heights, frozen panes unchanged | checked on 5 sheets |
+| PASS | Protected formulas intact (PC Formulas (1)!V2, PC Formulas (2)!S3, PC Formulas (3)!S3, PC Formulas (4)!S3) | unchanged |
 
 **Documented intentional changes (the only differences allowed):**
 - **Mapped cell values**: Only the cells listed in the template profile receive new values; each keeps its original formatting style.
@@ -199,7 +208,7 @@ with a separate spreadsheet library and comparing values, formulas, formatting a
 
 **Allowed changes actually seen in this run:**
 - workbook.xml: fullCalcOnLoad="1" set (Excel recalculates on open)
-- S3: template formula replaced as approved in the profile
+- PC Formulas (1)!S3: formula =CONCATENATE("1 of ",V2) replaced as approved in the profile (original formula confirmed before replacing)
 
 The tests also confirm that the checker **catches** problems. It fails on a changed formula
 in an unmapped cell, and on a damaged logo image. They also confirm that filling **refuses**
@@ -213,17 +222,15 @@ to workbook.xml.
 |---|---|---|---|
 | ERROR | Envelope | Cash reconciliation | Float $400.00 − receipts $331.52 = $68.48 expected back; $66.48 returned. SHORT by $2.00. |
 | WARNING | PC001-002 | Receipt arithmetic | Subtotal $86.25 + tax $8.19 = $94.44, but the receipt's printed total is $94.94 (difference $0.50). |
-| INFO | PC001-001 | Description | Filled from the job's line list for line 2410: "Art Dept - Expendables". |
-| INFO | PC001-003 | Description | Filled from the job's line list for line 2510: "Props - Purchases". |
-| INFO | PC001-003 | Payment method | Receipt shows payment by Visa, not cash. |
+| INFO | PC001-003 | Paid personally | The bill $100.29 by Visa, paid by crew member personally (reviewer): reimbursable to the crew member. |
 | INFO | PC001-004 | Tip paid by card | Tip $9.00 is included in the card charge of $54.99. |
 | INFO | PC001-004 | Suggested gratuity | Receipt shows suggested tip amounts; these were NOT counted. |
-| INFO | PC001-004 | Description | Filled from the job's line list for line 3520: "Catering / Meals". |
-| INFO | PC001-004 | Payment method | Receipt shows payment by Mastercard, not cash. |
+| INFO | PC001-004 | Paid personally | The bill $54.99 by Mastercard, paid by crew member personally (reviewer): reimbursable to the crew member. |
 
 The problems were planted on purpose in the fictional data: the crew member returned $2.00
-too little, the café receipt's printed total is $0.50 more than subtotal + tax, and the
-invoice was paid by card. The diner receipt shows a handwritten $9.00 tip added to the card
+too little, and the café receipt's printed total is $0.50 more than subtotal + tax. The
+invoice and the diner bill were paid on the crew member's own cards, which the simulated
+review classified as reimbursable. The diner receipt shows a handwritten $9.00 tip added to the card
 charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction

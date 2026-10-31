@@ -1,8 +1,8 @@
 """Job line lists: the budget line numbers for a particular job, with descriptions.
 
 Loaded once per job (CSV, Excel or YAML). When a receipt is given a line number,
-its description is filled in automatically from this list unless the reviewer
-typed their own. Line numbers that are not on the job's list are flagged.
+its ACCOUNT description is filled in automatically from this list. The purchase
+description stays a separate field entered by a person. Line numbers that are not on the job's list are flagged.
 
 Accepted formats (first two columns are used; a header row is optional):
   CSV / XLSX:  Line, Description
@@ -57,12 +57,16 @@ def load_line_list(path: Path) -> dict[str, str]:
     raise ValueError(f"Unsupported line list format: {path.name}")
 
 
-def fill_descriptions(receipts, lines: dict[str, str], audit=None) -> None:
-    """Fill each receipt's description from its line number when no description was typed."""
+def fill_account_descriptions(receipts, lines: dict[str, str], audit=None) -> None:
+    """Fill each receipt's ACCOUNT description from its budget line number.
+
+    The purchase description (what was bought and why) is a separate field that only a
+    person enters; it is never invented or overwritten here.
+    """
     for r in receipts:
         code = _code(r.account_code)
-        if code and not r.description and code in lines:
-            r.description = lines[code]
-            r.description_source = "job line list"
+        if code and code in lines:
+            r.account_description = lines[code]
             if audit:
-                audit.record("description_from_line_list", receipt=r.source_name, line=code, description=r.description)
+                audit.record("account_description_from_line_list", receipt=r.source_name, line=code,
+                             account_description=r.account_description)

@@ -448,8 +448,11 @@ def find_payment(rows: list[Row], source: str) -> FieldValue:
         for pat, label in methods:
             m = re.search(pat, up)
             if m:
-                return FieldValue("payment", label, round(0.9 * row.score_in(m.start(), m.end()), 3),
-                                  row.page, row.box_in(m.start(), m.end()), source)
+                f = FieldValue("payment", label, round(0.9 * row.score_in(m.start(), m.end()), 3),
+                               row.page, row.box_in(m.start(), m.end()), source)
+                d = re.search(r"(?:\*{2,}|X{2,}|ENDING(?:\s+IN)?|#)\s*(\d{4})\b|\b(\d{4})\s*\*{2,}", up)
+                f.payment_id = f"{label.upper()} {d.group(1) or d.group(2)}" if d else label.upper()
+                return f
     return FieldValue("payment", None, 0.0, note="not found")
 
 
@@ -462,6 +465,9 @@ def parse_receipt(pages: list[Page], known_vendors: list[str] = ()) -> dict[str,
               "date": find_date(rows, source)}
     fields.update(find_amounts(rows, source))
     fields["payment"] = find_payment(rows, source)
+    pid = getattr(fields["payment"], "payment_id", None)
+    fields["payment_id"] = FieldValue("payment_id", pid, fields["payment"].confidence, source=source,
+                                      note="last 4 digits only; full card numbers are never stored")
     fields["tip_method"] = tip_method(rows, fields)
     return fields
 

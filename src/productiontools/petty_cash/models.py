@@ -97,8 +97,11 @@ class Receipt:
     label: str | None = None           # what is written on the receipt (matches the top sheet's number column)
     annotation_notes: dict = field(default_factory=dict)
     account_code: str | None = None
-    description: str | None = None
-    description_source: str = ""       # "reviewer" or "job line list"
+    description: str | None = None     # the actual purchase description (only ever entered by a person)
+    account_description: str | None = None   # budget line description, from the job's line list
+    paid_by: str | None = None         # reviewer decision: petty_cash_float / crew_personal / company_card
+    tip_paid_by: str | None = None     # reviewer decision for a separate cash tip
+    payments: list = field(default_factory=list)   # payment components (see payments.py)
     verified_by: str | None = None
     number_position: list[float] | None = None   # optional reviewer override (normalised box)
     overrides: list[dict] = field(default_factory=list)
@@ -136,5 +139,7 @@ class Envelope:
     reported_total: Decimal       # what the crew member wrote on the envelope
     per_receipt_limit: Decimal = Decimal("250.00")
     crew_phone: str = ""
+    company_cards: list = field(default_factory=list)   # production card identifiers, e.g. ["AMEX 4201"]
+    excluded: list = field(default_factory=list)        # receipts paid entirely on a company card
     envelope_id: str = ""         # unique envelope ID (unique within the project)
     receipts: list[Receipt] = field(default_factory=list)

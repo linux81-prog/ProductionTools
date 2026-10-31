@@ -87,6 +87,13 @@
         "needs_review": false,
         "note": ""
       },
+      "payment_id": {
+        "value": "CASH",
+        "confidence": 0.9,
+        "located": false,
+        "needs_review": false,
+        "note": "last 4 digits only; full card numbers are never stored"
+      },
       "tip_method": {
         "value": null,
         "confidence": 0.0,
@@ -182,6 +189,13 @@
         "located": true,
         "needs_review": false,
         "note": ""
+      },
+      "payment_id": {
+        "value": "CASH",
+        "confidence": 0.9,
+        "located": false,
+        "needs_review": false,
+        "note": "last 4 digits only; full card numbers are never stored"
       },
       "tip_method": {
         "value": null,
@@ -279,6 +293,13 @@
         "needs_review": false,
         "note": ""
       },
+      "payment_id": {
+        "value": "VISA 0000",
+        "confidence": 0.9,
+        "located": false,
+        "needs_review": false,
+        "note": "last 4 digits only; full card numbers are never stored"
+      },
       "tip_method": {
         "value": null,
         "confidence": 0.0,
@@ -374,6 +395,13 @@
         "located": true,
         "needs_review": false,
         "note": ""
+      },
+      "payment_id": {
+        "value": "MASTERCARD 0000",
+        "confidence": 0.9,
+        "located": false,
+        "needs_review": false,
+        "note": "last 4 digits only; full card numbers are never stored"
       },
       "tip_method": {
         "value": "card",

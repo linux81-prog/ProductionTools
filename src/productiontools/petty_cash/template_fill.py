@@ -9,6 +9,7 @@ from ..core import xlsx_integrity
 from ..core.xlsx_fill import TemplateMappingError, fill_template_copy
 from .mapping import TemplateProfile
 from .models import Envelope
+from .payments import envelope_amount
 
 
 class TemplateOverflowError(TemplateMappingError):
@@ -50,7 +51,7 @@ def topsheet_values(env: Envelope, profile: TemplateProfile) -> dict[str, object
         raise TemplateOverflowError(
             f"{len(receipts)} receipts but the template has {profile.max_rows} line rows. "
             "Continuation sheets arrive in a later stage; split the envelope for now.")
-    total = sum((r.total or Decimal("0") for r in receipts), Decimal("0"))
+    total = sum((envelope_amount(r) for r in receipts), Decimal("0"))
     header_src = {
         "production": env.production, "production_number": env.production_number, "company": env.company,
         "crew_member": env.crew_member, "department": env.department, "position": env.position,
@@ -64,7 +65,8 @@ def topsheet_values(env: Envelope, profile: TemplateProfile) -> dict[str, object
     for i, r in enumerate(receipts):
         row = profile.first_row + i
         line_src = {"number": receipt_number_value(r, profile), "date": r.date, "vendor": r.vendor, "description": r.description,
-                    "account_code": r.account_code, "amount": r.total,
+                    "account_code": r.account_code, "account_description": r.account_description,
+                    "amount": envelope_amount(r),
                     "payment": r.val("payment"), "tax": r.val("tax")}
         for field, col in profile.columns.items():
             values[f"{col}{row}"] = _typed(line_src[field], profile.types.get(col, "auto"))
@@ -77,7 +79,22 @@ def fill_topsheet(env: Envelope, profile: TemplateProfile, dest: Path) -> dict:
     info = fill_template_copy(profile.template_file, dest, profile.sheet, values, profile.replace_formulas)
     report = xlsx_integrity.compare(profile.template_file, dest, profile.sheet, info["sheet_part"], values.keys())
     for cell in info["formulas_replaced"]:
-        report.allowed_changes_seen.append(f"{cell}: template formula replaced as approved in the profile")
+        report.allowed_changes_seen.append(
+            f"{profile.sheet}!{cell}: formula ={profile.replace_formulas[cell]} replaced as approved in the profile "
+            "(original formula confirmed before replacing)")
+    if profile.protected_formulas:
+        import zipfile
+
+        from ..core.xlsx_fill import cell_xml
+        broken = []
+        with zipfile.ZipFile(profile.template_file) as zt, zipfile.ZipFile(dest) as zd:
+            for item in profile.protected_formulas:
+                sheet, ref = item.rsplit("!", 1)
+                a, b = cell_xml(zt, sheet, ref), cell_xml(zd, sheet, ref)
+                if a is None or "<f" not in a or a != b:
+                    broken.append(item)
+        report.add(f"Protected formulas intact ({', '.join(profile.protected_formulas)})", not broken,
+                   "unchanged" if not broken else f"CHANGED OR MISSING: {broken}")
     info["preservation"] = report.as_dict()
     if not report.passed:
         failed = [c.name for c in report.checks if not c.passed]

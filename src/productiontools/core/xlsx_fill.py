@@ -102,6 +102,14 @@ def excel_serial(d: date | datetime, date1904: bool = False) -> float:
 
 
 # ------------------------------------------------------- package structure --
+def cell_xml(zf: zipfile.ZipFile, sheet_name: str, ref: str) -> str | None:
+    """Raw XML of one cell (used to prove protected cells are untouched)."""
+    xml = zf.read(resolve_sheet_part(zf, sheet_name)).decode("utf-8")
+    p = _prefix(xml)
+    m = re.search(rf'<{re.escape(p)}c\b[^>]*\br="{ref}"[^>]*?(?:/>|>.*?</{re.escape(p)}c>)', xml, re.S)
+    return m.group(0) if m else None
+
+
 def resolve_sheet_part(zf: zipfile.ZipFile, sheet_name: str) -> str:
     wb = ET.fromstring(zf.read("xl/workbook.xml"))
     rid = None
@@ -211,7 +219,7 @@ def _build_cell(p: str, ref: str, old_open_tag: str | None, value: CellValue, da
 
 
 def set_cells(sheet_xml: str, values: dict[str, CellValue], date1904: bool = False,
-              replace_formulas: frozenset[str] = frozenset()) -> str:
+              replace_formulas=frozenset()) -> str:
     """Return new sheet XML with only the given cells changed."""
     merges = merged_ranges(sheet_xml)
     by_row: dict[int, dict[str, CellValue]] = {}
@@ -256,8 +264,16 @@ def set_cells(sheet_xml: str, values: dict[str, CellValue], date1904: bool = Fal
     return prefix_xml + content + suffix_xml
 
 
+def _formula_text(cell_xml: str, p: str) -> str | None:
+    m = re.search(rf"<{re.escape(p)}f\b[^>]*>(.*?)</{re.escape(p)}f>", cell_xml, re.S)
+    if not m:
+        return None
+    t = m.group(1).replace("&quot;", '"').replace("&apos;", "'").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+    return re.sub(r"\s+", "", t.lstrip("="))
+
+
 def _edit_row(row_xml: str, p: str, wanted: dict[str, CellValue], date1904: bool,
-              replace_formulas: frozenset[str] = frozenset()) -> str:
+              replace_formulas=frozenset()) -> str:
     gt = row_xml.find(">")
     open_tag = row_xml[: gt + 1]
     if open_tag.endswith("/>"):
@@ -273,8 +289,16 @@ def _edit_row(row_xml: str, p: str, wanted: dict[str, CellValue], date1904: bool
     for ref, val in wanted.items():
         if ref in existing:
             span = existing[ref]
-            if re.search(rf"<{re.escape(p)}f\b", span.text) and ref not in replace_formulas:
+            has_formula = re.search(rf"<{re.escape(p)}f\b", span.text)
+            if has_formula and ref not in replace_formulas:
                 raise TemplateMappingError(f"{ref} contains a formula in the template; refusing to overwrite it.")
+            if has_formula and isinstance(replace_formulas, dict) and replace_formulas.get(ref):
+                expected = re.sub(r"\s+", "", replace_formulas[ref].lstrip("="))
+                found = _formula_text(span.text, p)
+                if found != expected:
+                    raise TemplateMappingError(
+                        f"{ref} was approved for replacement only if it holds ={replace_formulas[ref]!s}, but it holds "
+                        f"={found}. The template or mapping may be wrong; nothing was written.")
             old_tag = span.text[: span.text.find(">") + 1]
             edits.append((span.start, span.end, _build_cell(p, ref, old_tag, val, date1904)))
         else:
@@ -326,7 +350,10 @@ def fill_template_copy(template: Path, dest: Path, sheet_name: str, values: dict
     ``replace_formulas`` lists cells whose template formula may be replaced. Only cells
     the template profile explicitly marks ``replace_formula: true`` are passed here.
     """
-    replace_formulas = frozenset(c.upper() for c in replace_formulas)
+    if isinstance(replace_formulas, dict):   # {cell: expected original formula (or None)}
+        replace_formulas = {c.upper(): f for c, f in replace_formulas.items()}
+    else:
+        replace_formulas = frozenset(c.upper() for c in replace_formulas)
     template, dest = Path(template), Path(dest)
     if dest.exists():
         raise OverwriteRefusedError(f"Refusing to overwrite existing file: {dest}")
@@ -350,4 +377,4 @@ def fill_template_copy(template: Path, dest: Path, sheet_name: str, values: dict
                     data = zin.read(info.filename)
                 zout.writestr(info, data, compress_type=info.compress_type)
     return {"sheet_part": sheet_part, "cells_written": sorted(values), "date1904": date1904,
-            "formulas_replaced": sorted(replace_formulas & {k.upper() for k in values})}
+            "formulas_replaced": sorted(set(replace_formulas) & {k.upper() for k in values})}

@@ -38,7 +38,9 @@ Detailed requirements: [specs/petty-cash.md](specs/petty-cash.md). It covers use
 templates, the simplified annotations, and the two workflows: **Mode A — Create** and
 **Mode B — Verify**.
 
-1. **End-to-end demo of Mode A (cloud only).** Done. It now uses the user's master
+Current status: see the implemented-vs-planned table in [specs/petty-cash.md](specs/petty-cash.md#4-implementation-status-as-of-this-update).
+
+1. **End-to-end demo of Mode A (cloud only).** Done and tested. It now uses the user's master
    template and the simplified circles-plus-number annotations.
 2. **Excel export test kit.** A small AppleScript test with nothing to install, run with
    Wi-Fi off. The simplest supported method is tried first, and a manual export fallback is

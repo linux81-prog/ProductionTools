@@ -6,7 +6,12 @@
 #  - "Category" (P3) is the crew member's department (confirmed by the user).
 #  - "Envelope No" (S3) normally holds a "1 of N" page-count formula. As approved by
 #    the user, the app replaces it in the filled COPY with the unique envelope ID
-#    (e.g. LK-0042-PC001). Nothing else in the workbook refers to S3.
+#    (e.g. LK-0042-PC001). The app first confirms S3 still holds exactly
+#    =CONCATENATE("1 of ",V2); if not (different template / wrong cell) it refuses.
+#    Nothing in the workbook refers to S3. The page-numbering machinery stays intact
+#    and is checked on every fill (protected_formulas below): the envelope-count
+#    formula in V2 and the "2 of N" / "3 of N" / "4 of N" labels on the continuation
+#    sheets. Only sheet 1's own "1 of N" label is replaced by the ID.
 #  - "Line No" (F) must be a number for the template's line-number breakdown
 #    formulas to work, so account codes are written as numbers.
 #  - The receipts total, total of all envelopes and balance due are calculated by
@@ -26,7 +31,7 @@ header:
   production: I3
   production_number: M3
   department: P3
-  envelope_id: {cell: S3, type: text, replace_formula: true}
+  envelope_id: {cell: S3, type: text, replace_formula: true, expect_formula: 'CONCATENATE("1 of ",V2)'}
   float_amount: {cell: E48, type: money}
 
 line_items:
@@ -41,3 +46,9 @@ line_items:
     account_code: {col: F, type: number}
 
 overflow: refuse
+
+protected_formulas:     # must be byte-identical after every fill
+  - "PC Formulas (1)!V2"
+  - "PC Formulas (2)!S3"
+  - "PC Formulas (3)!S3"
+  - "PC Formulas (4)!S3"

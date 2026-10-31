@@ -211,8 +211,9 @@ to workbook.xml.
 {flags}
 
 The problems were planted on purpose in the fictional data: the crew member returned $2.00
-too little, the café receipt's printed total is $0.50 more than subtotal + tax, and the
-invoice was paid by card. The diner receipt shows a handwritten $9.00 tip added to the card
+too little, and the café receipt's printed total is $0.50 more than subtotal + tax. The
+invoice and the diner bill were paid on the crew member's own cards, which the simulated
+review classified as reimbursable. The diner receipt shows a handwritten $9.00 tip added to the card
 charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction

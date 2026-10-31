@@ -80,8 +80,17 @@ def apply_review(receipts: list[Receipt], review: dict, audit: AuditLog) -> None
             audit.record("account_code_set", actor=reviewer, receipt=r.source_name, value=r.account_code)
         if "description" in d:
             r.description = str(d["description"])
-            r.description_source = "reviewer"
             audit.record("description_set", actor=reviewer, receipt=r.source_name, value=r.description)
+        for key in ("paid_by", "tip_paid_by"):
+            if key in d:
+                val = d[key]
+                if val not in ("petty_cash_float", "crew_personal", "company_card"):
+                    raise ValueError(f"{r.source_name}: {key} must be petty_cash_float, crew_personal or company_card")
+                setattr(r, key, val)
+                audit.record(f"{key}_set", actor=reviewer, receipt=r.source_name, value=val)
+        if "tip_method" in d:
+            r.fields["tip_method"] = FieldValue("tip_method", d["tip_method"], 1.0, source="reviewer", verified=True)
+            audit.record("tip_method_set", actor=reviewer, receipt=r.source_name, value=d["tip_method"])
         if d.get("confirm"):
             for f in r.fields.values():
                 if f.value is not None:

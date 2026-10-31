@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from productiontools.petty_cash.models import Box, Envelope, FieldValue, Page, Receipt, Token
 from productiontools.petty_cash.parse import parse_receipt, tidy_vendor
+from productiontools.petty_cash.payments import classify
 from productiontools.petty_cash.recon import reconcile, summary_numbers
 from PIL import Image
 
@@ -64,6 +65,7 @@ def _receipt(name, vendor, d, sub, tax, total, verified=True, code="2410", pay="
         r.fields[k] = FieldValue(k, v, 0.95, 0, Box(0, 0, 1, 1), verified=verified)
     r.account_code, r.description, r.verified_by = code, "test", ("Reviewer" if verified else None)
     r.number = name
+    r.payments = classify(r)
     return r
 
 
@@ -102,7 +104,7 @@ def test_flags_duplicates_dates_limits_codes_and_unverified(chart):
     checks = {(f.scope, f.check) for f in reconcile(_env([a, b, c, d]), chart)}
     assert ("B", "Possible duplicate") in checks
     assert ("C", "Date outside period") in checks and ("C", "Over limit") in checks and ("C", "Account code") in checks
-    assert ("D", "Not verified") in checks and ("D", "Payment method") in checks
+    assert ("D", "Not verified") in checks and ("D", "Who paid?") in checks
 
 
 def test_reported_total_mismatch(chart):

@@ -8,7 +8,10 @@
     "cash_returned": "66.48",
     "over_short": "-2.00",
     "reported_total": "331.52",
-    "receipt_count": "4"
+    "receipt_count": "4",
+    "reimbursable_personal": "155.28",
+    "unclassified": "0.00",
+    "excluded_company_card": "0.00"
   },
   "receipts": [
     {
@@ -92,6 +95,13 @@
           "located": true,
           "needs_review": false,
           "note": ""
+        },
+        "payment_id": {
+          "value": "CASH",
+          "confidence": 0.9,
+          "located": false,
+          "needs_review": false,
+          "note": "last 4 digits only; full card numbers are never stored"
         },
         "tip_method": {
           "value": null,
@@ -185,6 +195,13 @@
           "needs_review": false,
           "note": ""
         },
+        "payment_id": {
+          "value": "CASH",
+          "confidence": 0.9,
+          "located": false,
+          "needs_review": false,
+          "note": "last 4 digits only; full card numbers are never stored"
+        },
         "tip_method": {
           "value": null,
           "confidence": 0.0,
@@ -277,6 +294,13 @@
           "needs_review": false,
           "note": ""
         },
+        "payment_id": {
+          "value": "VISA 0000",
+          "confidence": 0.9,
+          "located": false,
+          "needs_review": false,
+          "note": "last 4 digits only; full card numbers are never stored"
+        },
         "tip_method": {
           "value": null,
           "confidence": 0.0,
@@ -368,6 +392,13 @@
           "located": true,
           "needs_review": false,
           "note": ""
+        },
+        "payment_id": {
+          "value": "MASTERCARD 0000",
+          "confidence": 0.9,
+          "located": false,
+          "needs_review": false,
+          "note": "last 4 digits only; full card numbers are never stored"
         },
         "tip_method": {
           "value": "card",
@@ -466,11 +497,16 @@
         "name": "Merged cells, conditional formatting, data validation, print area/titles, page setup, margins, header/footer, print options, images, column widths, row heights, frozen panes unchanged",
         "passed": true,
         "detail": "checked on 5 sheets"
+      },
+      {
+        "name": "Protected formulas intact (PC Formulas (1)!V2, PC Formulas (2)!S3, PC Formulas (3)!S3, PC Formulas (4)!S3)",
+        "passed": true,
+        "detail": "unchanged"
       }
     ],
     "allowed_changes_seen": [
       "workbook.xml: fullCalcOnLoad=\"1\" set (Excel recalculates on open)",
-      "S3: template formula replaced as approved in the profile"
+      "PC Formulas (1)!S3: formula =CONCATENATE(\"1 of \",V2) replaced as approved in the profile (original formula confirmed before replacing)"
     ]
   }
 }

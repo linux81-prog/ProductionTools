@@ -18,20 +18,25 @@ HEADER_FIELDS = {
     "envelope_number", "period_start", "period_end", "float_amount", "cash_returned",
     "reported_total", "receipts_total", "receipt_count",
 }
-LINE_FIELDS = {"number", "date", "vendor", "description", "account_code", "amount", "payment", "tax"}
+LINE_FIELDS = {"number", "date", "vendor", "description", "account_code", "account_description", "amount",
+               "payment", "tax"}
 
 
 VALUE_TYPES = {"auto", "text", "number", "money", "date", "digits"}
 
 
-def _parse_target(v) -> tuple[str, str, bool]:
+def _parse_target(v) -> tuple[str, str, object]:
     """A target is "B4" / "A", or {cell|col: ..., type: number|text|money|date|digits, replace_formula: bool}."""
     if isinstance(v, dict):
         ref = str(v.get("cell") or v.get("col")).upper()
         typ = v.get("type", "auto")
         if typ not in VALUE_TYPES:
             raise TemplateMappingError(f"Unknown value type {typ!r}")
-        return ref, typ, bool(v.get("replace_formula", False))
+        if v.get("replace_formula"):
+            if not v.get("expect_formula"):
+                raise TemplateMappingError(f"{ref}: replace_formula requires expect_formula (the exact formula being replaced)")
+            return ref, typ, str(v["expect_formula"])
+        return ref, typ, False
     return str(v).upper(), "auto", False
 
 
@@ -47,7 +52,8 @@ class TemplateProfile:
     overflow: str
     source: Path
     types: dict = None                 # cell/column -> value type
-    replace_formulas: tuple = ()       # header cells whose template formula the user approved replacing
+    replace_formulas: dict = None      # header cell -> the exact template formula the user approved replacing
+    protected_formulas: tuple = ()     # "Sheet!Cell" formulas that must stay intact (e.g. page numbering)
     receipt_number_style: str = "full"  # "full" -> PC001-003 ; "index" -> 3
 
     def cells_for(self, n_lines: int) -> list[str]:
@@ -65,12 +71,12 @@ def load_profile(path: Path) -> TemplateProfile:
             raise TemplateMappingError(f"Profile {path.name} is missing '{key}'")
     types: dict[str, str] = {}
     header = {}
-    replace = []
+    replace = {}
     for k, v in data["header"].items():
         ref, typ, rf = _parse_target(v)
         header[k], types[ref] = ref, typ
         if rf:
-            replace.append(ref)
+            replace[ref] = rf
     unknown = set(header) - HEADER_FIELDS
     if unknown:
         raise TemplateMappingError(f"Unknown header fields in profile: {sorted(unknown)}")
@@ -94,7 +100,7 @@ def load_profile(path: Path) -> TemplateProfile:
         raise TemplateMappingError("receipt_number must be 'full' or 'index'")
     profile = TemplateProfile(data["name"], template, data["sheet"], header, int(li["first_row"]),
                               int(li["max_rows"]), columns, data.get("overflow", "refuse"), path, types,
-                              tuple(replace), style)
+                              replace, tuple(data.get("protected_formulas", [])), style)
     line_cells = {f"{c}{profile.first_row + i}" for i in range(profile.max_rows) for c in columns.values()}
     clash = line_cells & set(header.values())
     if clash:

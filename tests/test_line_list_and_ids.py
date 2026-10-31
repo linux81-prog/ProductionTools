@@ -6,7 +6,7 @@ import pytest
 from conftest import FIX
 from productiontools.core.audit import AuditLog
 from productiontools.petty_cash.envelope_ids import DuplicateEnvelopeIdError, make_envelope_id, register
-from productiontools.petty_cash.line_list import fill_descriptions, load_line_list
+from productiontools.petty_cash.line_list import fill_account_descriptions, load_line_list
 from productiontools.petty_cash.models import Envelope, Receipt
 
 
@@ -31,14 +31,14 @@ def test_conflicting_duplicate_line_is_rejected(tmp_path):
         load_line_list(p)
 
 
-def test_description_filled_only_when_blank(tmp_path):
+def test_account_description_filled_purchase_description_untouched(tmp_path):
     a, b, c = (Receipt(n, None, n, []) for n in "abc")
     a.account_code, b.account_code, c.account_code = "2410", "3510", "7777"
     b.description = "Typed by reviewer"
-    fill_descriptions([a, b, c], {"2410": "Art Dept - Expendables", "3510": "Craft Service"}, AuditLog(tmp_path / "log"))
-    assert (a.description, a.description_source) == ("Art Dept - Expendables", "job line list")
-    assert b.description == "Typed by reviewer"
-    assert c.description is None  # unknown line: left blank and flagged by reconciliation
+    fill_account_descriptions([a, b, c], {"2410": "Art Dept - Expendables", "3510": "Craft Service"}, AuditLog(tmp_path / "log"))
+    assert (a.account_description, a.description) == ("Art Dept - Expendables", None)   # never invents a purchase description
+    assert (b.account_description, b.description) == ("Craft Service", "Typed by reviewer")  # never overwrites one
+    assert c.account_description is None  # unknown line: flagged by reconciliation
 
 
 def _env(crew="Jordan Avery", num="PC001"):

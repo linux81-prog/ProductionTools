@@ -32,10 +32,16 @@ Standing rules apply throughout:
   - Continuation onto sheets 2–4 comes later; for now more than 35 receipts stops with
     a clear message.
   - "Category" holds the crew member's department (confirmed).
-  - "Envelope No" holds the **unique envelope ID**. It replaces the template's "1 of N"
-    formula in the filled copy only. The replacement is approved explicitly in the profile
-    (`replace_formula: true`) and recorded in the preservation report. All other formula
-    cells stay protected.
+  - "Envelope No" holds the **unique envelope ID**. This is the single, explicitly approved
+    exception to the rule against changing formulas. It replaces the "1 of N" formula on
+    sheet 1 of the filled copy only.
+  - Before replacing, the app checks that the cell still holds exactly
+    `=CONCATENATE("1 of ",V2)`. If it doesn't (a different template or a wrong cell), it
+    refuses and writes nothing.
+  - The page-numbering machinery is checked on every fill and must be unchanged: the
+    envelope-count formula in V2 and the "2 of N", "3 of N" and "4 of N" labels on the
+    continuation sheets. Only sheet 1's own "1 of N" label is replaced by the ID.
+  - Every other formula cell stays protected.
 
 ## 1b. Unique envelope IDs
 - Default format: `{production number}-{envelope number}`, e.g. `LK-0042-PC001`. A custom
@@ -44,17 +50,19 @@ Standing rules apply throughout:
   ever added to. Re-running the same envelope reuses its ID. A *different* envelope that tries
   to use an existing ID is refused with a clear message.
 
-## 1c. Job line lists (preloaded line numbers)
-- Each job can have a **line list**: budget line numbers with their descriptions, loaded
-  once from CSV, Excel or YAML. The first two columns are used: line number, description.
-- When a receipt is given a line number, its **description is filled in automatically**
-  from the job's line list, unless the reviewer typed their own description, which always
-  wins. The reconciliation report notes each auto-filled description so it can be reviewed.
-- Line numbers not on the job's list are flagged as errors. Conflicting duplicate entries
-  in a list are rejected when it's loaded.
-- The line list is stored with the project's originals: fingerprinted and read-only.
-- Later: the browser app will offer the job's line numbers as a pick-list, and Budget
-  Conversion / the PO module will share the same list.
+## 1c. Job line lists: budget-line (account) descriptions
+- Each job can have a **line list**: budget line numbers with their account descriptions,
+  loaded once from CSV, Excel or YAML. The first two columns are used.
+- When a line number is chosen, the **account description fills in automatically**, for
+  example 2410 → "Art Dept - Expendables".
+- The **purchase description** (what was bought and why) is a **separate field**. Only a
+  person enters it. It is **never invented and never overwritten** by the line list.
+  - On the master template, "For What" holds the purchase description.
+  - Templates with an account-description column can map `account_description`.
+  - A missing purchase description is flagged as a WARNING.
+- Line numbers that aren't on the job's list are flagged as errors. Conflicting duplicate
+  entries are rejected when the list is loaded. The list is stored with the project's
+  originals: fingerprinted and read-only.
 
 ## 1d. Handwritten tips and gratuities
 Each receipt keeps three separate amounts:
@@ -91,6 +99,39 @@ The **expense amount** used everywhere else is the confirmed final amount.
 - **Testing limits:** Stage 1 uses *simulated* handwriting (a font drawn with random tilt,
   size and slant in blue ink). Real handwriting varies far more, so accuracy on real receipts
   will be lower than the test figures. That's why every handwritten amount requires confirmation.
+
+## 1e. Payment method, who paid, and reimbursement
+Each receipt records separately:
+- the **final expense amount**
+- the **payment method and identifier**: last 4 digits only, e.g. `VISA 0000`. Full card
+  numbers are never stored.
+- **who paid** each part
+
+Who paid is one of:
+- `petty_cash_float`: cash from the crew member's petty cash float
+- `crew_personal`: the crew member's own money or card. This is reimbursable.
+- `company_card`: a production company card. This is **never reimbursed** to the crew member.
+- *unknown*: a person must decide.
+
+How it's applied:
+- Cash receipts are *inferred* as paid from the float, and the inference must be confirmed
+  on review.
+- A card that matches the job's list of production cards (`company_cards`, e.g. `AMEX 4201`)
+  is classified as a company card.
+- Any other card is **unknown** until a person classifies it, and that blocks finalizing
+  (ERROR).
+- **Company-card spending never counts toward the envelope or reimbursement.** A receipt
+  paid entirely on a company card is left out of the envelope and listed as "Excluded" for
+  confirmation. It belongs in credit card reconciliation instead.
+- **Tips are counted exactly once:**
+  - a card tip is inside the card charge;
+  - a cash tip on a card bill is split out as its own part, so a production-card bill
+    with a cash tip from the float puts only the tip in the envelope;
+  - who paid a cash tip is never assumed.
+- The top sheet amount for each receipt is its envelope amount: everything except
+  company-card spending.
+- The report shows the envelope total, the part paid personally (reimbursable), anything
+  still unclassified, and the excluded company-card spending.
 
 ## 2. Receipt annotations (default output)
 - **Only** circles around the vendor name, the transaction date and the final total (the
@@ -148,3 +189,34 @@ Rules for Mode B:
   copies, saved as new versions.
 - Submitted documents are never silently overwritten or altered. They're stored as
   fingerprinted, read-only originals.
+
+## 4. Implementation status (as of this update)
+
+**Implemented and covered by automated tests (Stage 1, run from a script in the cloud with fictional data):**
+
+| Feature | Where |
+|---|---|
+| Never-overwrite originals (copied, fingerprinted, read-only), versioned outputs, audit log | `core/filestore.py`, `core/versioning.py`, `core/audit.py` |
+| App-level network lock | `core/netguard.py` |
+| Reading photos (straightening, offline OCR), scanned PDFs and text PDFs | `petty_cash/extract.py` |
+| Vendor / date / subtotal / tax / printed total / payment (last 4 digits) with confidence scores | `petty_cash/parse.py` |
+| Handwritten tips: suggested gratuity ignored, proposed / mismatch / implied cases, card vs cash tip, recalculation after correction | `petty_cash/parse.py`, `review.py`, `recon.py` |
+| Who paid / reimbursement eligibility, company-card exclusion, split cash tips | `petty_cash/payments.py` |
+| Simplified annotations (circles + small number), duplicate-mark detection, annotated/clean outputs | `petty_cash/annotate.py` |
+| User-supplied templates through mapping profiles, typed cells, surgical filling, two-method preservation check | `core/xlsx_fill.py`, `core/xlsx_integrity.py`, `petty_cash/mapping.py` |
+| Master template profile, guarded Envelope No replacement, protected page-numbering formulas | `fixtures/templates/master_pc/` |
+| Job line lists → account descriptions (purchase description kept separate) | `petty_cash/line_list.py` |
+| Unique envelope IDs with a project registry | `petty_cash/envelope_ids.py` |
+| Reconciliation report (PDF and Excel), combined PDFs with bookmarks | `petty_cash/recon.py`, `pdf_out.py` |
+| Review decisions applied from a file (a stand-in for the review screen) | `petty_cash/review.py` |
+
+**Planned (not built yet):**
+
+| Feature | Stage |
+|---|---|
+| Excel export of the top-sheet PDF on the Mac, with manual fallback (the cloud uses a watermarked preview) | 2 |
+| Browser app: Create/Verify choice, import, review screen, annotation editor, template upload, pick-lists for line numbers and who paid | 3 |
+| Visual template-mapping screen; continuation sheets for more than 35 receipts | 4 |
+| **Mode B — Verify an existing envelope** (reading completed sheets, splitting combined PDFs, matching, PASS/WARNING/ERROR report) | 5 |
+| Locked numbering and revisions, full duplicate detection across envelopes, backups, network-activity page | 6 |
+| Testing on real handwriting, plus user guide and local trial on the Mac | 7 |

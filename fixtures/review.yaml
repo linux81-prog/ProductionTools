@@ -9,13 +9,17 @@
 #   corrections: {field: {value: ..., reason: ...}}
 #   positions:   {field: {page: 0, box: [x0, y0, x1, y1], reason: ...}}   (fractions of the page, 0-1)
 #   number_position: [x0, y0, x1, y1]
-#   account_code, description   (no description -> filled from the job's line list)
+#   account_code              -> the account description fills automatically from the job's line list
+#   description               -> the purchase description (only ever entered by a person)
+#   paid_by / tip_paid_by     -> petty_cash_float | crew_personal | company_card
+#   tip_method                -> card | cash
 reviewer: "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
 
 receipts:
   01_hardware_barn_photo.jpg:
     confirm: true
     account_code: "2410"
+    description: "Gaffer tape, zip ties, gloves, sash cord"
 
   02_copper_kettle_scan.pdf:
     confirm: true
@@ -28,10 +32,14 @@ receipts:
   03_prop_depot_invoice.pdf:
     confirm: true
     account_code: "2510"
+    description: "Brass ship lantern, rope coil (hero props)"
+    paid_by: crew_personal        # crew member's own Visa -> reimbursable
 
   04_harbor_light_diner_photo.jpg:
     confirm: true
     account_code: "3520"
+    description: "Crew dinner, location scout"
+    paid_by: crew_personal        # crew member's own Mastercard; tip was added to the card charge
     note: >-
       Handwritten tip $9.00 and final total $54.99 checked against the image
-      (45.99 + 9.00 = 54.99). Tip was added to the card charge.
+      (45.99 + 9.00 = 54.99).

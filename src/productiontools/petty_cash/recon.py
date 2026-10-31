@@ -15,6 +15,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from .models import REVIEW_THRESHOLD, Envelope
+from .payments import describe, envelope_amount
 
 ZERO = Decimal("0.00")
 
@@ -68,15 +69,20 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
             add("ERROR", n, "Account code", "No account code assigned.", "Choose an account code.")
         elif chart and r.account_code not in chart:
             add("ERROR", n, "Account code", f"Code {r.account_code} is not in the chart of accounts.", "Correct the code.")
-        if r.description and r.description_source == "job line list":
-            add("INFO", n, "Description", f"Filled from the job's line list for line {r.account_code}: \"{r.description}\".",
-                "Edit on the review screen if a more specific description is wanted.")
         if not r.description:
-            add("WARNING", n, "Description", "No description entered.", "Describe what was purchased and why.")
-        pay = r.val("payment")
-        if pay and pay != "Cash":
-            add("INFO", n, "Payment method", f"Receipt shows payment by {pay}, not cash.",
-                "Confirm this was paid personally (reimbursable) and not on a company card, to avoid double payment.")
+            add("WARNING", n, "Description", "No purchase description entered.", "Describe what was purchased and why.")
+        for c in r.payments:
+            if c.paid_by is None:
+                add("ERROR", n, "Who paid?", f"Could not tell who paid the {describe(c)}.",
+                    "Choose: petty cash float, crew member personally, or production company card.")
+            elif c.paid_by == "company_card":
+                add("WARNING", n, "Production card", f"The {describe(c)}: NOT reimbursable and not counted in this envelope.",
+                    "Confirm; the card charge is handled through card reconciliation, not petty cash.")
+            elif c.paid_by == "crew_personal":
+                add("INFO", n, "Paid personally", f"The {describe(c)}: reimbursable to the crew member.",
+                    "Confirm the card or money was the crew member's own.")
+            elif "inferred" in c.source and not r.verified_by:
+                add("WARNING", n, "Payment classification", f"The {describe(c)}.", "Confirm on review.")
         if r.sha256 in seen_hash:
             add("ERROR", n, "Duplicate file", f"Same file as {seen_hash[r.sha256]}.", "Remove the duplicate.")
         seen_hash.setdefault(r.sha256, n)
@@ -91,7 +97,11 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
             add("INFO", n, "Manual override", f"{o['kind']}: {o['field']} {o['old']} → {o['new']}"
                 + (f" ({o['reason']})" if o.get("reason") else ""), "Recorded in the audit log.")
 
-    total = sum((r.total or ZERO for r in env.receipts), ZERO)
+    for r in env.excluded:
+        add("WARNING", r.source_name, "Excluded receipt", f"{r.vendor or '?'} ${r.total}: paid entirely on a production company card "
+            f"({r.val('payment_id') or r.val('payment')}), so it was left out of this envelope.",
+            "Confirm. It belongs in credit card reconciliation, not petty cash.")
+    total = sum((envelope_amount(r) for r in env.receipts), ZERO)
     if total != env.reported_total:
         add("WARNING", "Envelope", "Reported total", f"Receipts add up to ${total}, but the envelope reports ${env.reported_total} "
             f"(difference ${total - env.reported_total}).", "Confirm with the crew member.")
@@ -135,10 +145,10 @@ def _tip_flags(r, n, add) -> None:
         method = r.val("tip_method")
         if method == "card":
             add("INFO", n, "Tip paid by card", f"Tip ${tip if tip is not None else (fin - printed)} is included in the card charge of ${r.total}.",
-                "Reimburse the card charge once; do not add the tip again.")
+                "Counted once, as part of the card charge.")
         elif method == "cash":
-            add("INFO", n, "Tip paid in cash", f"Tip paid in cash; expense amount ${r.total} includes it.",
-                "Confirm the cash tip was paid from petty cash / personally.")
+            add("INFO", n, "Tip paid in cash", f"Tip ${tip} paid in cash, counted once as its own payment.",
+                "Confirm who paid the cash tip.")
         else:
             add("WARNING", n, "Tip payment method", "Could not tell whether the tip was paid by card or in cash.",
                 "Ask the crew member so the reimbursement is correct.")
@@ -147,11 +157,14 @@ def _tip_flags(r, n, add) -> None:
 
 
 def summary_numbers(env: Envelope) -> dict:
-    total = sum((r.total or ZERO for r in env.receipts), ZERO)
+    total = sum((envelope_amount(r) for r in env.receipts), ZERO)
     expected = env.float_amount - total
     return {"float": env.float_amount, "receipts_total": total, "expected_return": expected,
             "cash_returned": env.cash_returned, "over_short": env.cash_returned - expected,
-            "reported_total": env.reported_total, "receipt_count": len(env.receipts)}
+            "reported_total": env.reported_total, "receipt_count": len(env.receipts),
+            "reimbursable_personal": sum((c.amount for r in env.receipts for c in r.payments if c.paid_by == "crew_personal"), ZERO),
+            "unclassified": sum((c.amount for r in env.receipts for c in r.payments if c.paid_by is None), ZERO),
+            "excluded_company_card": sum((r.total or ZERO for r in env.excluded), ZERO)}
 
 
 # ------------------------------------------------------------------ outputs --
@@ -176,7 +189,10 @@ def report_pdf(env: Envelope, flags: list[Flag], extra_sections: list[tuple[str,
     summ = [["Float issued", money(n["float"])], ["Receipts total", money(n["receipts_total"])],
             ["Expected cash return", money(n["expected_return"])], ["Cash returned", money(n["cash_returned"])],
             ["Over / (Short)", money(n["over_short"])], ["Crew-reported total", money(n["reported_total"])],
-            ["Receipts", str(n["receipt_count"])]]
+            ["Receipts", str(n["receipt_count"])],
+            ["  of which paid personally (reimbursable)", money(n["reimbursable_personal"])],
+            ["  of which still unclassified (who paid?)", money(n["unclassified"])],
+            ["Excluded: production company card", money(n["excluded_company_card"])]]
     t = Table(summ, colWidths=[2.2 * inch, 1.4 * inch])
     t.setStyle(TableStyle([("FONT", (0, 0), (-1, -1), "Helvetica", 9.5), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                            ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
@@ -230,10 +246,12 @@ def report_xlsx(env: Envelope, flags: list[Flag], dest: Path) -> None:
         s.append([k.replace("_", " ").title(), float(v) if isinstance(v, Decimal) else v])
     s.column_dimensions["A"].width = 24
     li = wb.create_sheet("Line Items")
-    li.append(["Number", "Date", "Vendor", "Description", "Account", "Subtotal", "Tax", "Total", "Payment", "Verified by", "Source file"])
-    for r in env.receipts:
-        li.append([r.number, r.date, r.vendor, r.description, r.account_code,
-                   *(float(r.val(k)) if r.val(k) is not None else None for k in ("subtotal", "tax", "total")),
-                   r.val("payment"), r.verified_by, r.source_name])
+    li.append(["Number", "Date", "Vendor", "Purchase description", "Line", "Account description", "Subtotal", "Tax",
+               "Printed total", "Tip", "Final amount", "Envelope amount", "Payment", "Paid by", "Verified by", "Source file"])
+    for r in env.receipts + env.excluded:
+        li.append([r.number or "EXCLUDED", r.date, r.vendor, r.description, r.account_code, r.account_description,
+                   *(float(r.val(k)) if r.val(k) is not None else None for k in ("subtotal", "tax", "printed_total", "tip", "total")),
+                   float(envelope_amount(r)), r.val("payment_id") or r.val("payment"),
+                   "; ".join(f"{c.label}: {c.paid_by or 'UNKNOWN'}" for c in r.payments), r.verified_by, r.source_name])
     with open(dest, "xb") as fh:
         wb.save(fh)

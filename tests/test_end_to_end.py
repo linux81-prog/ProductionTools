@@ -57,13 +57,10 @@ def test_reconciliation_flags_the_planted_problems(run):
     checks = {(f.severity, f.scope, f.check) for f in res.flags}
     assert ("ERROR", "Envelope", "Cash reconciliation") in checks           # $2.00 short
     assert ("WARNING", "PC001-002", "Receipt arithmetic") in checks         # printed total $0.50 off
-    assert ("INFO", "PC001-003", "Payment method") in checks                # paid by Visa
-    assert ("INFO", "PC001-001", "Description") in checks                  # filled from the job line list
-    assert ("INFO", "PC001-003", "Description") in checks
+    assert ("INFO", "PC001-003", "Paid personally") in checks               # crew member's own Visa
     assert ("INFO", "PC001-004", "Tip paid by card") in checks             # handwritten tip, charged to the card
     assert ("INFO", "PC001-004", "Suggested gratuity") in checks           # suggested amounts not counted
-    allowed = ("Cash reconciliation", "Receipt arithmetic", "Payment method", "Description", "Tip paid by card",
-               "Suggested gratuity")
+    allowed = ("Cash reconciliation", "Receipt arithmetic", "Paid personally", "Tip paid by card", "Suggested gratuity")
     assert not [f for f in res.flags if f.check not in allowed]
     summary = json.loads((res.version_dir / "run_summary.json").read_text())
     assert summary["status"].startswith("READY FOR HUMAN REVIEW")
@@ -133,8 +130,7 @@ def test_master_template_envelope(tmp_path, chart_module):
     assert ws["E48"].value == 400 and ws["A3"].value == "Jordan Avery" and ws["E3"].value == 5550102020
     assert ws["E44"].value == '=IF(SUM(E8:E42),SUM(E8:E42),"")'
     assert ws["S3"].value == "LK-0042-PC001"                                # unique envelope ID replaces "1 of N"
-    assert ws["D8"].value == "Art Dept - Expendables"                       # from the job line list
-    assert ws["D9"].value == "Crew coffee and pastries, prep day"           # reviewer's own text wins
-    assert ws["D10"].value == "Props - Purchases"
+    assert ws["D8"].value == "Gaffer tape, zip ties, gloves, sash cord"     # purchase description, as entered
+    assert ws["D10"].value == "Brass ship lantern, rope coil (hero props)"
     txt = PdfReader(str(res.version_dir / "receipts_annotated" / EXPECTED[0])).pages[0].extract_text()
     assert "#1" in txt
