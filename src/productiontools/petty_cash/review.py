@@ -88,6 +88,15 @@ def apply_review(receipts: list[Receipt], review: dict, audit: AuditLog) -> None
                     raise ValueError(f"{r.source_name}: {key} must be petty_cash_float, crew_personal or company_card")
                 setattr(r, key, val)
                 audit.record(f"{key}_set", actor=reviewer, receipt=r.source_name, value=val)
+        for key in ("personal_card_approved", "tip_eligible_confirmed", "reimbursed_from_float", "acknowledge_exclusion"):
+            if key in d:
+                attr = "exclusion_acknowledged" if key == "acknowledge_exclusion" else key
+                setattr(r, attr, bool(d[key]))
+                audit.record(f"{key}_set", actor=reviewer, receipt=r.source_name, value=bool(d[key]))
+        for key in ("authorization", "tip_documentation"):
+            if d.get(key):
+                setattr(r, key, str(d[key]))
+                audit.record(f"{key}_set", actor=reviewer, receipt=r.source_name, value=str(d[key]))
         if "tip_method" in d:
             r.fields["tip_method"] = FieldValue("tip_method", d["tip_method"], 1.0, source="reviewer", verified=True)
             audit.record("tip_method_set", actor=reviewer, receipt=r.source_name, value=d["tip_method"])

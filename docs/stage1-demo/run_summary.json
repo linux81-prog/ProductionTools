@@ -4,14 +4,19 @@
   "numbers": {
     "float": "400.00",
     "receipts_total": "331.52",
-    "expected_return": "68.48",
-    "cash_returned": "66.48",
+    "eligible_total": "331.52",
+    "float_disbursements": "176.24",
+    "expected_return": "223.76",
+    "cash_returned": "221.76",
     "over_short": "-2.00",
+    "personal_owed": "155.28",
+    "held_for_review": "0.00",
+    "ineligible_company_card": "0.00",
+    "ineligible_policy": "0.00",
     "reported_total": "331.52",
     "receipt_count": "4",
-    "reimbursable_personal": "155.28",
-    "unclassified": "0.00",
-    "excluded_company_card": "0.00"
+    "excluded_count": "0",
+    "policy": "cash_and_approved_personal_cards"
   },
   "receipts": [
     {

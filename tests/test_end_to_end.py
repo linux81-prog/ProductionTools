@@ -11,6 +11,7 @@ from productiontools.core import netguard
 from productiontools.core.filestore import sha256_file
 from productiontools.petty_cash.pipeline import run_envelope
 
+RULES = FIX / "jobs" / "LK-0042_petty_cash_rules.yaml"
 EXPECTED = ["PC001-001_2026-10-14_Hardware-Barn_81.30.pdf",
             "PC001-002_2026-10-15_Copper-Kettle-Cafe_94.94.pdf",
             "PC001-003_2026-10-16_Prop-Depot-Supply-Co_100.29.pdf",
@@ -21,7 +22,7 @@ EXPECTED = ["PC001-001_2026-10-14_Hardware-Barn_81.30.pdf",
 def run(tmp_path_factory, chart_module):
     project = tmp_path_factory.mktemp("project")
     before = {p.name: sha256_file(p) for p in (FIX / "receipts").iterdir()}
-    res = run_envelope(FIX / "envelope.yaml", FIX / "receipts", PROFILE, chart_module, project, FIX / "review.yaml")
+    res = run_envelope(FIX / "envelope.yaml", FIX / "receipts", PROFILE, chart_module, project, FIX / "review.yaml", rules_path=RULES)
     return res, project, before
 
 
@@ -57,15 +58,20 @@ def test_reconciliation_flags_the_planted_problems(run):
     checks = {(f.severity, f.scope, f.check) for f in res.flags}
     assert ("ERROR", "Envelope", "Cash reconciliation") in checks           # $2.00 short
     assert ("WARNING", "PC001-002", "Receipt arithmetic") in checks         # printed total $0.50 off
-    assert ("INFO", "PC001-003", "Paid personally") in checks               # crew member's own Visa
+    assert ("WARNING", "PC001-003", "Personal card") in checks              # approved, still flagged for sign-off
+    assert ("INFO", "Envelope", "Reimbursement owed") in checks             # personal cards owed, not paid from float
     assert ("INFO", "PC001-004", "Tip paid by card") in checks             # handwritten tip, charged to the card
     assert ("INFO", "PC001-004", "Suggested gratuity") in checks           # suggested amounts not counted
-    allowed = ("Cash reconciliation", "Receipt arithmetic", "Paid personally", "Tip paid by card", "Suggested gratuity")
+    allowed = ("Cash reconciliation", "Receipt arithmetic", "Personal card", "Reimbursement owed", "Tip paid by card",
+               "Suggested gratuity")
     assert not [f for f in res.flags if f.check not in allowed]
     summary = json.loads((res.version_dir / "run_summary.json").read_text())
     assert summary["status"].startswith("READY FOR HUMAN REVIEW")
     assert summary["numbers"]["over_short"] == "-2.00"
     assert summary["numbers"]["receipts_total"] == "331.52"
+    assert summary["numbers"]["float_disbursements"] == "176.24"
+    assert summary["numbers"]["personal_owed"] == "155.28"
+    assert summary["numbers"]["expected_return"] == "223.76"
 
 
 def test_topsheet_values_and_preservation(run):
@@ -75,7 +81,7 @@ def test_topsheet_values_and_preservation(run):
     ws = openpyxl.load_workbook(res.version_dir / "PC001_TopSheet.xlsx")["Top Sheet"]
     assert [ws[f"A{r}"].value for r in (10, 11, 12, 13)] == ["PC001-001", "PC001-002", "PC001-003", "PC001-004"]
     assert [ws[f"G{r}"].value for r in (10, 11, 12, 13)] == [81.3, 94.94, 100.29, 54.99]  # confirmed final incl. tip
-    assert ws["G28"].value == 66.48 and ws["G25"].value == "=SUM(G10:G24)"
+    assert ws["G28"].value == 221.76 and ws["G25"].value == "=SUM(G10:G24)"
 
 
 def test_originals_preserved_and_locked(run):
@@ -106,7 +112,7 @@ def test_no_unexpected_network_attempts(run):
 def test_second_run_creates_new_version_without_overwriting(run, chart_module):
     res, project, _ = run
     first = {p: p.read_bytes() for p in res.version_dir.rglob("*") if p.is_file()}
-    res2 = run_envelope(FIX / "envelope.yaml", FIX / "receipts", PROFILE, chart_module, project, FIX / "review.yaml")
+    res2 = run_envelope(FIX / "envelope.yaml", FIX / "receipts", PROFILE, chart_module, project, FIX / "review.yaml", rules_path=RULES)
     assert res2.version_dir.name == "v2"
     assert all(p.read_bytes() == b for p, b in first.items())
     assert len([l for l in (project / "originals" / "manifest.jsonl").read_text().splitlines() if l]) == 4  # no duplicates on re-run
@@ -119,7 +125,7 @@ def test_master_template_envelope(tmp_path, chart_module):
     template = FIX / "templates" / "master_pc" / "PC_Sheet_Template.xlsx"
     before = sha256_file(template)
     res = run_envelope(FIX / "envelope.yaml", FIX / "receipts", profile, FIX / "jobs" / "LK-0042_line_list.csv",
-                       tmp_path, FIX / "review.yaml")
+                       tmp_path, FIX / "review.yaml", rules_path=RULES)
     assert res.preservation["passed"]
     assert any("S3" in a for a in res.preservation["allowed_changes_seen"])
     assert sha256_file(template) == before

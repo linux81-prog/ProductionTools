@@ -13,6 +13,11 @@
 #   description               -> the purchase description (only ever entered by a person)
 #   paid_by / tip_paid_by     -> petty_cash_float | crew_personal | company_card
 #   tip_method                -> card | cash
+#   personal_card_approved    -> explicit approval of a personal card expense (if the job's rules allow them)
+#   authorization             -> authorization reference (required on case-by-case jobs)
+#   tip_eligible_confirmed + tip_documentation -> cash tip on a production-card bill
+#   reimbursed_from_float     -> a personal expense was actually paid back out of the float
+#   acknowledge_exclusion     -> reviewer acknowledges an ineligible receipt left out of the envelope
 reviewer: "SIMULATED REVIEW - Stage 1 demo file (no real person reviewed these receipts)"
 
 receipts:
@@ -33,13 +38,15 @@ receipts:
     confirm: true
     account_code: "2510"
     description: "Brass ship lantern, rope coil (hero props)"
-    paid_by: crew_personal        # crew member's own Visa -> reimbursable
+    paid_by: crew_personal        # crew member's own Visa
+    personal_card_approved: true  # job allows approved personal-card expenses; approved on (simulated) review
 
   04_harbor_light_diner_photo.jpg:
     confirm: true
     account_code: "3520"
     description: "Crew dinner, location scout"
     paid_by: crew_personal        # crew member's own Mastercard; tip was added to the card charge
+    personal_card_approved: true
     note: >-
       Handwritten tip $9.00 and final total $54.99 checked against the image
       (45.99 + 9.00 = 54.99).

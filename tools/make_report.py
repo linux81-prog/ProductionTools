@@ -212,8 +212,10 @@ to workbook.xml.
 
 The problems were planted on purpose in the fictional data: the crew member returned $2.00
 too little, and the café receipt's printed total is $0.50 more than subtotal + tax. The
-invoice and the diner bill were paid on the crew member's own cards, which the simulated
-review classified as reimbursable. The diner receipt shows a handwritten $9.00 tip added to the card
+job's rules allow approved personal-card expenses. The invoice and the diner bill were paid on
+the crew member's own cards and approved in the simulated review. They count as eligible and
+are owed to the crew member ($155.28). They do not reduce the cash expected back from the
+float (400.00 − 176.24 = 223.76). The diner receipt shows a handwritten $9.00 tip added to the card
 charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction

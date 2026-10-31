@@ -15,7 +15,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from .models import REVIEW_THRESHOLD, Envelope
-from .payments import describe, envelope_amount
+from .payments import bucket_totals, describe, envelope_amount
 
 ZERO = Decimal("0.00")
 
@@ -71,18 +71,7 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
             add("ERROR", n, "Account code", f"Code {r.account_code} is not in the chart of accounts.", "Correct the code.")
         if not r.description:
             add("WARNING", n, "Description", "No purchase description entered.", "Describe what was purchased and why.")
-        for c in r.payments:
-            if c.paid_by is None:
-                add("ERROR", n, "Who paid?", f"Could not tell who paid the {describe(c)}.",
-                    "Choose: petty cash float, crew member personally, or production company card.")
-            elif c.paid_by == "company_card":
-                add("WARNING", n, "Production card", f"The {describe(c)}: NOT reimbursable and not counted in this envelope.",
-                    "Confirm; the card charge is handled through card reconciliation, not petty cash.")
-            elif c.paid_by == "crew_personal":
-                add("INFO", n, "Paid personally", f"The {describe(c)}: reimbursable to the crew member.",
-                    "Confirm the card or money was the crew member's own.")
-            elif "inferred" in c.source and not r.verified_by:
-                add("WARNING", n, "Payment classification", f"The {describe(c)}.", "Confirm on review.")
+        _payment_flags(r, n, add)
         if r.sha256 in seen_hash:
             add("ERROR", n, "Duplicate file", f"Same file as {seen_hash[r.sha256]}.", "Remove the duplicate.")
         seen_hash.setdefault(r.sha256, n)
@@ -98,20 +87,22 @@ def reconcile(env: Envelope, chart: dict[str, str]) -> list[Flag]:
                 + (f" ({o['reason']})" if o.get("reason") else ""), "Recorded in the audit log.")
 
     for r in env.excluded:
-        add("WARNING", r.source_name, "Excluded receipt", f"{r.vendor or '?'} ${r.total}: paid entirely on a production company card "
-            f"({r.val('payment_id') or r.val('payment')}), so it was left out of this envelope.",
-            "Confirm. It belongs in credit card reconciliation, not petty cash.")
-    total = sum((envelope_amount(r) for r in env.receipts), ZERO)
-    if total != env.reported_total:
-        add("WARNING", "Envelope", "Reported total", f"Receipts add up to ${total}, but the envelope reports ${env.reported_total} "
-            f"(difference ${total - env.reported_total}).", "Confirm with the crew member.")
-    expected = env.float_amount - total
-    diff = env.cash_returned - expected
+        _payment_flags(r, r.source_name, add, excluded=True)
+    n_ = summary_numbers(env)
+    if n_["eligible_total"] != env.reported_total:
+        add("WARNING", "Envelope", "Reported total", f"Eligible receipts add up to ${n_['eligible_total']}, but the envelope reports "
+            f"${env.reported_total} (difference ${n_['eligible_total'] - env.reported_total}).", "Confirm with the crew member.")
+    diff = n_["over_short"]
     if diff != 0:
         kind = "SHORT" if diff < 0 else "OVER"
         add("ERROR", "Envelope", "Cash reconciliation",
-            f"Float ${env.float_amount} − receipts ${total} = ${expected} expected back; ${env.cash_returned} returned. "
-            f"{kind} by ${abs(diff)}.", "Resolve with the crew member (missing receipt, lost-receipt affidavit, or cash correction).")
+            f"Float ${env.float_amount} − float disbursements ${n_['float_disbursements']} = ${n_['expected_return']} cash expected back; "
+            f"${env.cash_returned} returned. {kind} by ${abs(diff)}.",
+            "Resolve with the crew member (missing receipt, lost-receipt affidavit, or cash correction).")
+    if n_["personal_owed"]:
+        add("INFO", "Envelope", "Reimbursement owed", f"${n_['personal_owed']} of approved personally paid expenses has not been "
+            "reimbursed from the float, so it does not reduce the cash expected back.",
+            "Reimburse through accounting, or record it if it was paid out of the float.")
     if not env.receipts:
         add("ERROR", "Envelope", "No receipts", "Envelope has no receipts.", "Add receipts.")
     order = {"ERROR": 0, "WARNING": 1, "INFO": 2}
@@ -156,15 +147,40 @@ def _tip_flags(r, n, add) -> None:
         add("INFO", n, "Suggested gratuity", "Receipt shows suggested tip amounts; these were NOT counted.", "No action needed.")
 
 
+def _payment_flags(r, n, add, excluded: bool = False) -> None:
+    for c in r.payments:
+        what = describe(c)
+        if c.eligibility == "review_required":
+            add("ERROR", n, "Needs decision", f"The {what}: {c.reason}. Not counted in the envelope.",
+                "Resolve on review (identify the payment / who paid, or record the approval the job's rules require).")
+        elif c.eligibility == "ineligible":
+            check = "Production card - ineligible" if c.paid_by == "company_card" else "Job policy - ineligible"
+            where = (" Route it to credit card reconciliation / the PO Log, so it is counted once there."
+                     if c.paid_by == "company_card" else "")
+            if r.exclusion_acknowledged:
+                add("INFO", n, check, f"The {what}: {c.reason}. Excluded from this envelope; exclusion acknowledged on review.{where}",
+                    "Documented separately; does not block finalizing.")
+            else:
+                add("ERROR", n, check, f"The {what}: {c.reason}. Excluded from this envelope.{where}",
+                    "Acknowledge the exclusion on review.")
+        elif c.method not in (None, "Cash") and c.paid_by == "crew_personal":
+            add("WARNING", n, "Personal card", f"The {what}: {c.reason}. Counted as eligible; "
+                + ("recorded as reimbursed from the float." if r.reimbursed_from_float else "reimbursement is still owed (not paid from the float)."),
+                "Sign off that this personal card expense is allowed under the job's policy.")
+        elif "inferred" in c.source and not r.verified_by:
+            add("WARNING", n, "Payment classification", f"The {what}.", "Confirm on review.")
+
+
 def summary_numbers(env: Envelope) -> dict:
-    total = sum((envelope_amount(r) for r in env.receipts), ZERO)
-    expected = env.float_amount - total
-    return {"float": env.float_amount, "receipts_total": total, "expected_return": expected,
+    b = bucket_totals(env.receipts, env.excluded)
+    expected = env.float_amount - b["float_disbursements"]
+    return {"float": env.float_amount, "receipts_total": b["eligible_total"], "eligible_total": b["eligible_total"],
+            "float_disbursements": b["float_disbursements"], "expected_return": expected,
             "cash_returned": env.cash_returned, "over_short": env.cash_returned - expected,
-            "reported_total": env.reported_total, "receipt_count": len(env.receipts),
-            "reimbursable_personal": sum((c.amount for r in env.receipts for c in r.payments if c.paid_by == "crew_personal"), ZERO),
-            "unclassified": sum((c.amount for r in env.receipts for c in r.payments if c.paid_by is None), ZERO),
-            "excluded_company_card": sum((r.total or ZERO for r in env.excluded), ZERO)}
+            "personal_owed": b["personal_owed"], "held_for_review": b["held_for_review"],
+            "ineligible_company_card": b["ineligible_company_card"], "ineligible_policy": b["ineligible_policy"],
+            "reported_total": env.reported_total, "receipt_count": len(env.receipts), "excluded_count": len(env.excluded),
+            "policy": env.rules.payment_policy if env.rules else "cash_only"}
 
 
 # ------------------------------------------------------------------ outputs --
@@ -186,17 +202,26 @@ def report_pdf(env: Envelope, flags: list[Flag], extra_sections: list[tuple[str,
                        f"Period {env.period_start:%m/%d/%Y}–{env.period_end:%m/%d/%Y}", small), Spacer(1, 10)]
     n = summary_numbers(env)
     money = lambda v: f"${v:,.2f}" if v >= 0 else f"(${-v:,.2f})"
-    summ = [["Float issued", money(n["float"])], ["Receipts total", money(n["receipts_total"])],
-            ["Expected cash return", money(n["expected_return"])], ["Cash returned", money(n["cash_returned"])],
-            ["Over / (Short)", money(n["over_short"])], ["Crew-reported total", money(n["reported_total"])],
-            ["Receipts", str(n["receipt_count"])],
-            ["  of which paid personally (reimbursable)", money(n["reimbursable_personal"])],
-            ["  of which still unclassified (who paid?)", money(n["unclassified"])],
-            ["Excluded: production company card", money(n["excluded_company_card"])]]
-    t = Table(summ, colWidths=[2.2 * inch, 1.4 * inch])
+    rules = env.rules
+    story.append(Paragraph(f"<b>Petty cash rules for this production:</b> {rules.description if rules else 'Cash only'} "
+                           f"({rules.source if rules else 'default'}). Production company card purchases are never eligible.", small))
+    story.append(Spacer(1, 6))
+    summ = [["Float issued", money(n["float"])],
+            ["Eligible expenses (top sheet total)", money(n["eligible_total"])],
+            ["  paid from the float", money(n["float_disbursements"])],
+            ["  paid personally, reimbursement still owed", money(n["personal_owed"])],
+            ["Cash expected back (float − float disbursements)", money(n["expected_return"])],
+            ["Cash returned", money(n["cash_returned"])],
+            ["Cash over / (short)", money(n["over_short"])],
+            ["Crew-reported total", money(n["reported_total"])],
+            ["Held for review (not counted)", money(n["held_for_review"])],
+            ["Ineligible: production company card", money(n["ineligible_company_card"])],
+            ["Ineligible: job policy", money(n["ineligible_policy"])],
+            ["Receipts in envelope / excluded", f"{n['receipt_count']} / {n['excluded_count']}"]]
+    t = Table(summ, colWidths=[3.2 * inch, 1.4 * inch])
     t.setStyle(TableStyle([("FONT", (0, 0), (-1, -1), "Helvetica", 9.5), ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                            ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
-                           ("BACKGROUND", (0, 4), (-1, 4), colors.HexColor("#F8D7DA") if n["over_short"] else colors.white)]))
+                           ("BACKGROUND", (0, 6), (-1, 6), colors.HexColor("#F8D7DA") if n["over_short"] else colors.white)]))
     story += [t, Spacer(1, 12)]
 
     counts = {s: sum(f.severity == s for f in flags) for s in ("ERROR", "WARNING", "INFO")}

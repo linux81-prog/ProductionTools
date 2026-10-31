@@ -100,38 +100,60 @@ The **expense amount** used everywhere else is the confirmed final amount.
   size and slant in blue ink). Real handwriting varies far more, so accuracy on real receipts
   will be lower than the test figures. That's why every handwritten amount requires confirmation.
 
-## 1e. Payment method, who paid, and reimbursement
-Each receipt records separately:
-- the **final expense amount**
-- the **payment method and identifier**: last 4 digits only, e.g. `VISA 0000`. Full card
-  numbers are never stored.
-- **who paid** each part
+## 1e. Production petty cash rules: payment method, who paid, eligibility, cash
 
-Who paid is one of:
-- `petty_cash_float`: cash from the crew member's petty cash float
-- `crew_personal`: the crew member's own money or card. This is reimbursable.
-- `company_card`: a production company card. This is **never reimbursed** to the crew member.
-- *unknown*: a person must decide.
+**The production's rules decide eligibility.** Payment method, who paid and reimbursement
+are recorded as separate facts. Each job has a rules file, e.g.
+`fixtures/jobs/LK-0042_petty_cash_rules.yaml`, with these settings:
+- `payment_policy` is one of:
+  - `cash_only`: no card purchases of any kind, including personal cards
+  - `cash_and_approved_personal_cards`: cash, plus personal card expenses approved one by one
+  - `case_by_case`: non-cash only with approval **and** an authorization reference
+- `production_cards`: identifiers of the production company cards (the last 4 digits are matched)
+- If no rules file is given, the strictest policy (`cash_only`) applies.
 
-How it's applied:
-- Cash receipts are *inferred* as paid from the float, and the inference must be confirmed
-  on review.
-- A card that matches the job's list of production cards (`company_cards`, e.g. `AMEX 4201`)
-  is classified as a company card.
-- Any other card is **unknown** until a person classifies it, and that blocks finalizing
-  (ERROR).
-- **Company-card spending never counts toward the envelope or reimbursement.** A receipt
-  paid entirely on a company card is left out of the envelope and listed as "Excluded" for
-  confirmation. It belongs in credit card reconciliation instead.
-- **Tips are counted exactly once:**
-  - a card tip is inside the card charge;
-  - a cash tip on a card bill is split out as its own part, so a production-card bill
-    with a cash tip from the float puts only the tip in the envelope;
-  - who paid a cash tip is never assumed.
-- The top sheet amount for each receipt is its envelope amount: everything except
-  company-card spending.
-- The report shows the envelope total, the part paid personally (reimbursable), anything
-  still unclassified, and the excluded company-card spending.
+**Rules that apply on every job:**
+- **Production company card purchases are never eligible.** They're never on the top sheet,
+  in the envelope totals, in the float calculation or in crew reimbursement.
+  - The receipt is kept and documented as excluded, with the reason. It's marked for credit
+    card reconciliation / the PO Log, so it's counted once, there.
+  - Once a reviewer acknowledges the exclusion, it no longer blocks an otherwise correct
+    envelope from being finalized.
+- **An unidentified card is never assumed to be personal.** An unknown payment method or card
+  owner blocks finalizing until the user identifies it.
+- **Nothing is reimbursed automatically.** A personal card expense needs explicit approval on a
+  permitting job, and is still flagged for sign-off after approval. On a cash-only job it's
+  ineligible.
+- **Tips follow the same rules.** A cash tip on a production-card bill is never included
+  automatically. It needs explicit confirmation that it's eligible, **plus** a reference to
+  where it's independently documented. Who paid a cash tip is never assumed.
+
+**Outcome for each payment part:** eligible, review required (not counted, and blocks
+finalizing), or ineligible (excluded; blocks finalizing until acknowledged). A receipt with
+no eligible amount is left out of the envelope: it isn't numbered and isn't on the top
+sheet, but it's listed in the report.
+
+**Money is tracked in separate buckets:**
+
+| Bucket | Meaning |
+|---|---|
+| Eligible expenses | the top sheet total |
+| Float disbursements | eligible money that actually left the float: cash, or a personal expense *explicitly recorded* as reimbursed from the float |
+| Personal reimbursement owed | approved personal expenses not paid back from the float |
+| Held for review | not counted until resolved |
+| Ineligible: production card, and Ineligible: job policy | documented, never counted |
+
+- **Cash expected back = float − float disbursements.** A personal card expense never reduces
+  the cash expected back unless reimbursement from the float was recorded.
+- The master template's own "Balance due" formula shows the net figure (float − eligible
+  expenses). The report shows the physical cash and the reimbursement owed separately.
+
+**In both modes:**
+- **Create:** ineligible or pending items never reach the generated top sheet or the envelope
+  calculations.
+- **Verify:** prohibited card expenses on a completed envelope are reported as
+  **policy violations**, and the submitted envelope is never modified. The shared policy check
+  is built and tested; the Verify screens come in Stage 5.
 
 ## 2. Receipt annotations (default output)
 - **Only** circles around the vendor name, the transaction date and the final total (the
@@ -201,7 +223,9 @@ Rules for Mode B:
 | Reading photos (straightening, offline OCR), scanned PDFs and text PDFs | `petty_cash/extract.py` |
 | Vendor / date / subtotal / tax / printed total / payment (last 4 digits) with confidence scores | `petty_cash/parse.py` |
 | Handwritten tips: suggested gratuity ignored, proposed / mismatch / implied cases, card vs cash tip, recalculation after correction | `petty_cash/parse.py`, `review.py`, `recon.py` |
-| Who paid / reimbursement eligibility, company-card exclusion, split cash tips | `petty_cash/payments.py` |
+| Production petty cash rules (cash only / approved personal cards / case by case), production-card exclusion, unknown-payment blocking, cash tips on production-card bills | `petty_cash/policy.py` |
+| Separate buckets: eligible, float disbursements, personal reimbursement owed, held, ineligible; cash expected back from float disbursements only | `petty_cash/payments.py`, `recon.py` |
+| Verify-mode policy check on a completed envelope (logic only; no screens), proven not to modify its inputs | `policy.check_completed_envelope` |
 | Simplified annotations (circles + small number), duplicate-mark detection, annotated/clean outputs | `petty_cash/annotate.py` |
 | User-supplied templates through mapping profiles, typed cells, surgical filling, two-method preservation check | `core/xlsx_fill.py`, `core/xlsx_integrity.py`, `petty_cash/mapping.py` |
 | Master template profile, guarded Envelope No replacement, protected page-numbering formulas | `fixtures/templates/master_pc/` |
@@ -217,6 +241,7 @@ Rules for Mode B:
 | Excel export of the top-sheet PDF on the Mac, with manual fallback (the cloud uses a watermarked preview) | 2 |
 | Browser app: Create/Verify choice, import, review screen, annotation editor, template upload, pick-lists for line numbers and who paid | 3 |
 | Visual template-mapping screen; continuation sheets for more than 35 receipts | 4 |
-| **Mode B — Verify an existing envelope** (reading completed sheets, splitting combined PDFs, matching, PASS/WARNING/ERROR report) | 5 |
+| **Mode B — Verify an existing envelope**: screens, reading completed sheets, splitting combined PDFs, matching, PASS/WARNING/ERROR report (the policy check it will use is already built) | 5 |
+| Sending excluded production-card receipts to credit card reconciliation / the PO Log | later modules |
 | Locked numbering and revisions, full duplicate detection across envelopes, backups, network-activity page | 6 |
 | Testing on real handwriting, plus user guide and local trial on the Mac | 7 |

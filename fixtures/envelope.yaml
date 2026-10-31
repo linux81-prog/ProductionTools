@@ -12,7 +12,9 @@ period_start: 2026-10-12
 period_end: 2026-10-18
 float_amount: "400.00"
 reported_total: "331.52"   # what the crew member wrote on the envelope
-cash_returned: "66.48"     # cash handed back (deliberately $2.00 short for the demo)
+cash_returned: "221.76"    # cash handed back. Expected: 400.00 - 176.24 paid from the float = 223.76.
+                           # Deliberately $2.00 short for the demo. The two personal-card expenses
+                           # ($155.28) are owed to the crew member and do not reduce the cash expected back.
 per_receipt_limit: "250.00"
 receipts:
   - 01_hardware_barn_photo.jpg

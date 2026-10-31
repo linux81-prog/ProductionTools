@@ -31,7 +31,8 @@ from .parse import parse_receipt
 from .review import apply_review, load_review
 from .envelope_ids import DEFAULT_FORMAT, make_envelope_id, register
 from .line_list import fill_account_descriptions, load_line_list
-from .payments import classify, describe
+from .payments import classify
+from .policy import ELIGIBLE, load_rules, receipt_status
 from .template_fill import fill_topsheet, receipt_label
 
 # A provider turns the filled .xlsx into a PDF. On the Mac this will be the
@@ -60,7 +61,6 @@ def load_envelope(path: Path) -> tuple[Envelope, list[str]]:
         float_amount=Decimal(str(d["float_amount"])), cash_returned=Decimal(str(d["cash_returned"])),
         reported_total=Decimal(str(d["reported_total"])),
         per_receipt_limit=Decimal(str(d.get("per_receipt_limit", "250.00"))), crew_phone=str(d.get("crew_phone", "")))
-    env.company_cards = [str(c) for c in d.get("company_cards", [])]
     env.envelope_id = str(d.get("envelope_id") or make_envelope_id(env, d.get("envelope_id_format", DEFAULT_FORMAT)))
     return env, list(d["receipts"])
 
@@ -74,12 +74,15 @@ def _field_json(r: Receipt) -> dict:
 def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, chart: dict[str, str] | Path,
                  project_dir: Path, review_path: Path | None = None,
                  topsheet_pdf_provider: TopSheetPdfProvider | None = None,
-                 topsheet_pdf_label: str = "") -> RunResult:
+                 topsheet_pdf_label: str = "", rules_path: Path | None = None) -> RunResult:
     netguard.install()  # app-level safeguard: no outbound connections from this process
     project_dir = Path(project_dir)
     audit = AuditLog(project_dir / "audit.log")
     store = OriginalsStore(project_dir / "originals")
     env, receipt_names = load_envelope(envelope_yaml)
+    env.rules = load_rules(rules_path)  # production-specific petty cash rules (strictest if none given)
+    audit.record("petty_cash_rules", policy=env.rules.payment_policy, source=env.rules.source,
+                 production_cards=len(env.rules.production_cards))
     register(project_dir, env)  # refuses an ID already used by a different envelope
     audit.record("envelope_id", envelope_id=env.envelope_id)
     if not isinstance(chart, dict):  # a job line list file (CSV / XLSX / YAML)
@@ -120,19 +123,21 @@ def run_envelope(envelope_yaml: Path, receipts_dir: Path, profile_path: Path, ch
     # 3b. account descriptions from the job's line list (purchase descriptions are never invented)
     fill_account_descriptions(env.receipts, chart, audit)
 
-    # 3c. who paid / reimbursement eligibility; company-card-only receipts leave the envelope
+    # 3c. who paid + the production's rules decide eligibility. Only eligible amounts enter
+    #     the envelope; receipts with nothing eligible are excluded (documented, not discarded).
     kept = []
     for r in env.receipts:
-        r.payments = classify(r, env.company_cards)
+        classify(r, rules=env.rules)
         for c in r.payments:
             audit.record("payment_classified", receipt=r.source_name, component=c.label, amount=str(c.amount),
-                         method=c.method, paid_by=c.paid_by, source=c.source)
-        if r.payments and all(c.paid_by == "company_card" for c in r.payments):
-            env.excluded.append(r)
-            audit.record("receipt_excluded", receipt=r.source_name,
-                         reason="paid entirely on a production company card - not a petty cash / reimbursable expense")
-        else:
+                         method=c.method, paid_by=c.paid_by, source=c.source, eligibility=c.eligibility, reason=c.reason)
+        r.status = receipt_status(r)
+        if r.status == ELIGIBLE:
             kept.append(r)
+        else:
+            env.excluded.append(r)
+            audit.record("receipt_excluded", receipt=r.source_name, status=r.status,
+                         reasons="; ".join(c.reason for c in r.payments))
     env.receipts = kept
 
     # 4. numbering: by date, then by the order received

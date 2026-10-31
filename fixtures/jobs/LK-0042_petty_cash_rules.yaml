@@ -1,0 +1,11 @@
+# Petty cash rules for job LK-0042 (fictional).
+#
+# payment_policy options:
+#   cash_only                          - cash only; no card purchases of any kind (incl. personal cards)
+#   cash_and_approved_personal_cards   - cash, plus personally paid card expenses individually approved on review
+#   case_by_case                       - non-cash only with approval AND an authorization reference
+#
+# Production company card purchases are NEVER eligible, whatever the policy.
+payment_policy: cash_and_approved_personal_cards
+production_cards:          # identify production company cards (last 4 digits are matched)
+  - "AMEX 4201"

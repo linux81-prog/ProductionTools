@@ -36,6 +36,7 @@ def run(out: Path):
         review_path=FIX / "review.yaml",
         topsheet_pdf_provider=cloud_preview.preview_pdf,
         topsheet_pdf_label=cloud_preview.LABEL,
+        rules_path=FIX / "jobs" / "LK-0042_petty_cash_rules.yaml",
     )
 
 

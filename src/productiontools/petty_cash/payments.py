@@ -10,12 +10,15 @@ but a card bill plus a cash tip is two. Each component records:
       company_card      - a production company card (NEVER reimbursed to crew)
       None              - unknown: a person must classify it.
 
-Rules:
-  * A company-card component is never counted toward the envelope or reimbursement.
-  * Unknown classifications are never guessed. They block finalizing until a person
-    decides.
-  * A tip is counted exactly once: card tips are inside the card charge; a cash tip on
-    a card bill is its own component.
+Eligibility is decided by the production's rules (policy.py), not here.
+Money is tracked in separate buckets so eligibility never gets confused with cash:
+  * eligible amount       - counted in the envelope / top sheet
+  * float disbursement    - eligible AND actually paid from the petty cash float
+                            (cash from the float, or a personal expense explicitly
+                            recorded as reimbursed from the float)
+  * personal owed         - eligible, paid personally, NOT yet reimbursed from the float
+  * company card          - never counted
+Unknown classifications are never guessed. A tip is counted exactly once.
 """
 
 from __future__ import annotations
@@ -38,6 +41,8 @@ class Component:
     method: str | None
     paid_by: str | None
     source: str             # how paid_by was decided: reviewer / production card list / inferred / unknown
+    eligibility: str = "review_required"   # set by policy.apply()
+    reason: str = ""
 
     @property
     def reimbursable(self) -> bool:
@@ -49,13 +54,15 @@ def _last4(s: str | None) -> str | None:
     return m.group(1) if m else None
 
 
-def classify(receipt, company_cards: list[str] = ()) -> list[Component]:
+def classify(receipt, company_cards: list[str] = (), rules=None) -> list[Component]:
     """Build payment components for a receipt. Reviewer decisions always win."""
     total = receipt.total
     if total is None:
         return []
     method = receipt.val("payment")
     pay_id = receipt.val("payment_id")
+    if rules is not None:
+        company_cards = list(company_cards) + list(rules.production_cards)
     company_last4 = {_last4(c) for c in company_cards if _last4(c)}
 
     def who(reviewer_value, method_):
@@ -74,19 +81,60 @@ def classify(receipt, company_cards: list[str] = ()) -> list[Component]:
         pb, src = who(receipt.paid_by, method)
         # Whose cash paid the tip (float or the crew member's own) is never assumed.
         tpb, tsrc = (receipt.tip_paid_by, "reviewer") if receipt.tip_paid_by else (None, "unknown - who paid the cash tip must be confirmed")
-        return [Component("bill", bill_amount, method, pb, src), Component("cash tip", tip, "Cash", tpb, tsrc)]
+        comps = [Component("bill", bill_amount, method, pb, src), Component("cash tip", tip, "Cash", tpb, tsrc)]
+        return _with_policy(receipt, comps, rules)
     pb, src = who(receipt.paid_by, method)
-    return [Component("bill", total, method, pb, src)]
+    comps = [Component("bill", total, method, pb, src)]
+    return _with_policy(receipt, comps, rules)
+
+
+def _with_policy(receipt, comps, rules):
+    from .policy import PettyCashRules, evaluate
+    rules = rules or PettyCashRules()
+    receipt.payments = comps
+    for c in comps:
+        c.eligibility, c.reason = evaluate(c, receipt, rules)
+    return comps
 
 
 def envelope_amount(receipt) -> Decimal:
-    """Amount this receipt contributes to the petty cash envelope: everything except company-card spending.
+    """Eligible amount: what this receipt contributes to the envelope / top sheet."""
+    return sum((c.amount for c in receipt.payments if c.eligibility == "eligible"), ZERO)
 
-    Unknown components are included here, but they are flagged as ERROR so the
-    envelope cannot be finalized until a person classifies them.
-    """
-    return sum((c.amount for c in receipt.payments if c.paid_by != "company_card"), ZERO)
+
+def float_disbursement(receipt) -> Decimal:
+    """Eligible money that actually left the petty cash float."""
+    total = ZERO
+    for c in receipt.payments:
+        if c.eligibility != "eligible":
+            continue
+        if c.paid_by == "petty_cash_float" or (c.paid_by == "crew_personal" and receipt.reimbursed_from_float):
+            total += c.amount
+    return total
+
+
+def personal_owed(receipt) -> Decimal:
+    """Eligible personally paid money not (yet) reimbursed from the float."""
+    if receipt.reimbursed_from_float:
+        return ZERO
+    return sum((c.amount for c in receipt.payments if c.eligibility == "eligible" and c.paid_by == "crew_personal"), ZERO)
 
 
 def describe(c: Component) -> str:
     return f"{c.label} ${c.amount} by {c.method or 'unknown method'}, paid by {LABELS[c.paid_by]} ({c.source})"
+
+
+def bucket_totals(receipts, excluded=()) -> dict:
+    out = {"eligible_total": ZERO, "float_disbursements": ZERO, "personal_owed": ZERO, "held_for_review": ZERO,
+           "ineligible_company_card": ZERO, "ineligible_policy": ZERO}
+    for r in list(receipts) + list(excluded):
+        out["eligible_total"] += envelope_amount(r)
+        out["float_disbursements"] += float_disbursement(r)
+        out["personal_owed"] += personal_owed(r)
+        for c in r.payments:
+            if c.eligibility == "review_required":
+                out["held_for_review"] += c.amount
+            elif c.eligibility == "ineligible":
+                key = "ineligible_company_card" if c.paid_by == "company_card" else "ineligible_policy"
+                out[key] += c.amount
+    return out

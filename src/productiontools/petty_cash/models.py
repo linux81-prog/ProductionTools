@@ -102,6 +102,13 @@ class Receipt:
     paid_by: str | None = None         # reviewer decision: petty_cash_float / crew_personal / company_card
     tip_paid_by: str | None = None     # reviewer decision for a separate cash tip
     payments: list = field(default_factory=list)   # payment components (see payments.py)
+    personal_card_approved: bool = False   # explicit approval of a personal card expense
+    authorization: str | None = None       # case-by-case authorization reference
+    tip_eligible_confirmed: bool = False   # cash tip on a production-card bill confirmed eligible
+    tip_documentation: str | None = None   # where that tip is independently documented
+    reimbursed_from_float: bool = False    # a personal expense explicitly reimbursed out of the float
+    exclusion_acknowledged: bool = False   # reviewer acknowledged an ineligible (excluded) receipt
+    status: str = ""                       # eligible / review_required / ineligible
     verified_by: str | None = None
     number_position: list[float] | None = None   # optional reviewer override (normalised box)
     overrides: list[dict] = field(default_factory=list)
@@ -139,7 +146,7 @@ class Envelope:
     reported_total: Decimal       # what the crew member wrote on the envelope
     per_receipt_limit: Decimal = Decimal("250.00")
     crew_phone: str = ""
-    company_cards: list = field(default_factory=list)   # production card identifiers, e.g. ["AMEX 4201"]
-    excluded: list = field(default_factory=list)        # receipts paid entirely on a company card
+    rules: object = None                                 # PettyCashRules for this production
+    excluded: list = field(default_factory=list)        # receipts with no eligible amount (ineligible or held for review)
     envelope_id: str = ""         # unique envelope ID (unique within the project)
     receipts: list[Receipt] = field(default_factory=list)

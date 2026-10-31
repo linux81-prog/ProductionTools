@@ -1,10 +1,10 @@
 # Stage 1 — Test Results and Demo Report
 
-Generated 2026-10-31 21:09 in the cloud development environment. **All data is fictional.**
+Generated 2026-10-31 21:29 in the cloud development environment. **All data is fictional.**
 
 ## 1. Automated tests
 
-**Result: 67 passed, 1 warning in 66.70s (0:01:06)**
+**Result: 83 passed, 1 warning in 80.52s (0:01:20)**
 
 Every test runs with the app-level network lock installed, so any accidental outbound
 connection would make the suite fail.
@@ -52,12 +52,28 @@ tests/test_parse_and_recon.py::test_balanced_envelope_has_no_errors PASSED
 tests/test_parse_and_recon.py::test_shortage_and_overage PASSED
 tests/test_parse_and_recon.py::test_flags_duplicates_dates_limits_codes_and_unverified PASSED
 tests/test_parse_and_recon.py::test_reported_total_mismatch PASSED
-tests/test_payments.py::test_cash_is_float_but_card_is_unknown_until_classified PASSED
-tests/test_payments.py::test_company_card_is_never_reimbursed PASSED
-tests/test_payments.py::test_card_bill_with_cash_tip_is_split_and_counted_once PASSED
 tests/test_payments.py::test_card_tip_is_inside_the_card_charge PASSED
-tests/test_payments.py::test_cash_tip_with_unknown_payer_needs_review PASSED
-tests/test_payments.py::test_envelope_flags_and_totals PASSED
+tests/test_payments.py::test_cash_tip_on_personal_card_bill_is_its_own_component PASSED
+tests/test_payments.py::test_personal_card_never_reduces_cash_expected_back_unless_recorded PASSED
+tests/test_payments.py::test_cash_reconciliation_uses_float_disbursements_only PASSED
+tests/test_payments.py::test_cash_only_job_cash_reconciliation PASSED
+tests/test_policy.py::test_production_card_always_ineligible[cash_only] PASSED
+tests/test_policy.py::test_production_card_always_ineligible[cash_and_approved_personal_cards] PASSED
+tests/test_policy.py::test_production_card_always_ineligible[case_by_case] PASSED
+tests/test_policy.py::test_personal_card_on_cash_only_job_ineligible PASSED
+tests/test_policy.py::test_personal_card_on_permitting_job_requires_review_then_approval PASSED
+tests/test_policy.py::test_case_by_case_needs_approval_and_authorization PASSED
+tests/test_policy.py::test_unknown_card_owner_requires_review[cash_only] PASSED
+tests/test_policy.py::test_unknown_card_owner_requires_review[cash_and_approved_personal_cards] PASSED
+tests/test_policy.py::test_unknown_card_owner_requires_review[case_by_case] PASSED
+tests/test_policy.py::test_unknown_payment_method_requires_review PASSED
+tests/test_policy.py::test_production_card_bill_with_cash_tip_not_automatically_included[cash_only] PASSED
+tests/test_policy.py::test_production_card_bill_with_cash_tip_not_automatically_included[cash_and_approved_personal_cards] PASSED
+tests/test_policy.py::test_production_card_bill_with_cash_tip_not_automatically_included[case_by_case] PASSED
+tests/test_policy.py::test_acknowledged_exclusion_does_not_block_but_unresolved_review_does PASSED
+tests/test_policy.py::test_verify_mode_flags_prohibited_cards_without_modifying_anything PASSED
+tests/test_policy.py::test_rules_file_and_strict_default PASSED
+tests/test_policy.py::test_create_mode_keeps_ineligible_out_of_topsheet PASSED
 tests/test_template_preservation.py::test_fill_passes_every_preservation_check PASSED
 tests/test_template_preservation.py::test_values_and_formulas_after_fill PASSED
 tests/test_template_preservation.py::test_recalculate_flag_added_when_template_lacks_it PASSED
@@ -220,17 +236,20 @@ to workbook.xml.
 
 | Severity | Scope | Check | Finding |
 |---|---|---|---|
-| ERROR | Envelope | Cash reconciliation | Float $400.00 − receipts $331.52 = $68.48 expected back; $66.48 returned. SHORT by $2.00. |
+| ERROR | Envelope | Cash reconciliation | Float $400.00 − float disbursements $176.24 = $223.76 cash expected back; $221.76 returned. SHORT by $2.00. |
 | WARNING | PC001-002 | Receipt arithmetic | Subtotal $86.25 + tax $8.19 = $94.44, but the receipt's printed total is $94.94 (difference $0.50). |
-| INFO | PC001-003 | Paid personally | The bill $100.29 by Visa, paid by crew member personally (reviewer): reimbursable to the crew member. |
+| WARNING | PC001-003 | Personal card | The bill $100.29 by Visa, paid by crew member personally (reviewer): personal card expense approved. Counted as eligible; reimbursement is still owed (not paid from the float). |
+| WARNING | PC001-004 | Personal card | The bill $54.99 by Mastercard, paid by crew member personally (reviewer): personal card expense approved. Counted as eligible; reimbursement is still owed (not paid from the float). |
+| INFO | Envelope | Reimbursement owed | $155.28 of approved personally paid expenses has not been reimbursed from the float, so it does not reduce the cash expected back. |
 | INFO | PC001-004 | Tip paid by card | Tip $9.00 is included in the card charge of $54.99. |
 | INFO | PC001-004 | Suggested gratuity | Receipt shows suggested tip amounts; these were NOT counted. |
-| INFO | PC001-004 | Paid personally | The bill $54.99 by Mastercard, paid by crew member personally (reviewer): reimbursable to the crew member. |
 
 The problems were planted on purpose in the fictional data: the crew member returned $2.00
 too little, and the café receipt's printed total is $0.50 more than subtotal + tax. The
-invoice and the diner bill were paid on the crew member's own cards, which the simulated
-review classified as reimbursable. The diner receipt shows a handwritten $9.00 tip added to the card
+job's rules allow approved personal-card expenses. The invoice and the diner bill were paid on
+the crew member's own cards and approved in the simulated review. They count as eligible and
+are owed to the crew member ($155.28). They do not reduce the cash expected back from the
+float (400.00 − 176.24 = 223.76). The diner receipt shows a handwritten $9.00 tip added to the card
 charge, with suggested-gratuity lines that were correctly not counted.
 
 ## 5. What failed, or needed manual correction
